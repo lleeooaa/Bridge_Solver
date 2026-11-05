@@ -1,0 +1,6 @@
+ONNX Runtime Web 1.23.2, pinned in package.json and pnpm-lock.yaml.
+Runtime JavaScript and WASM are staged from the installed npm package at build time.
+
+Upstream: https://github.com/microsoft/onnxruntime/tree/v1.23.2
+License: https://raw.githubusercontent.com/microsoft/onnxruntime/v1.23.2/LICENSE
+Third-party notices: https://raw.githubusercontent.com/microsoft/onnxruntime/v1.23.2/ThirdPartyNotices.txt

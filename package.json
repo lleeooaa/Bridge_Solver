@@ -1,0 +1,32 @@
+{
+  "name": "bridge-solver-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.3",
+  "scripts": {
+    "dev": "rsbuild dev --port 3002 --strict-port",
+    "build": "pnpm verify:dds && pnpm verify:model-distribution && node scripts/stage-belief-runtime.mjs && rsbuild build",
+    "preview": "rsbuild preview",
+    "test": "vitest run src",
+    "test:e2e": "playwright test",
+    "verify:dds": "node scripts/verify-dds.mjs",
+    "verify:model-distribution": "node scripts/verify-model-distribution.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rsbuild/core": "^2.2.14",
+    "@rsbuild/plugin-react": "^2.1.1",
+    "onnxruntime-web": "1.23.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "bridge-belief-model/v1",
+  "id": "human-pilot-colab",
+  "version": "1.0.0",
+  "featureSchema": "bridge-declarer-features/v1",
+  "outputSchema": "bridge-hidden-deal-log-weights/v1",
+  "runtime": "onnx-bridge-belief/v1",
+  "tensorSchema": "bridge-belief-tensors/v1",
+  "hiddenSize": 256,
+  "purpose": "research-pilot",
+  "localOnly": false,
+  "modelDistributionAllowed": true,
+  "humanUniqueDeals": 299760,
+  "datasetSha256": "57e19a4f408b107aa574d7cb692cc29e83aa6859b6fadbb3683c1bd1e4d82081",
+  "assets": {
+    "encoder": {
+      "file": "encoder.onnx",
+      "sha256": "bfa15d06ab7cd835da7f8265862907a46180775fb4f36fb7a39537f245a4f7fa",
+      "bytes": 2510692
+    },
+    "decoder": {
+      "file": "decoder.onnx",
+      "sha256": "31c8d087598aadddb629b352508381fa811a0a579334d436721ec89a5f77f974",
+      "bytes": 900771
+    }
+  },
+  "exportParity": {
+    "absoluteTolerance": 0.0001,
+    "relativeTolerance": 0.0001,
+    "maximumAbsoluteError": 1.9073486328125e-06
+  },
+  "limitations": [
+    "Free-text convention notes are stored but not encoded by this model.",
+    "Mixed systems remain ambiguous; signals are probabilistic evidence.",
+    "DDS continuation is double-dummy, not an optimal single-dummy policy."
+  ]
+}

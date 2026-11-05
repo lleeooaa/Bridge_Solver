@@ -1,0 +1,15 @@
+DDS / DDS3: https://github.com/dds-bridge/dds
+Upstream source revision and build provenance are recorded in manifest.json.
+The DDS core is distributed under the accompanying Apache-2.0 LICENSE.
+
+The upstream browser entry point, web/dds_web_wasm.cpp, carries:
+Copyright 2020-2026 Adam Wildavsky. MIT license.
+
+Emscripten runtime: https://github.com/emscripten-core/emscripten
+Copyright (c) 2010-2026 Emscripten authors. MIT / University of Illinois NCSA.
+License text is preserved in LICENSE-EMSCRIPTEN from Emscripten 6.0.12.
+
+The adjacent coi-serviceworker.js retains its MIT license header.
+Its full license is preserved in LICENSE-COI from:
+https://github.com/gzuidhof/coi-serviceworker/blob/master/LICENSE
+runtime-worker.js is this application's adapter, not an upstream DDS file.

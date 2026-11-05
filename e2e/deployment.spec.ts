@@ -1,0 +1,28 @@
+import { expect, test } from "@playwright/test";
+import { openApp } from "./fixtures";
+
+test("plain static subpath hosting gains isolation through the scoped service worker", async ({ page, request }) => {
+    const response = await request.get("./");
+    expect(response.headers()["cross-origin-opener-policy"]).toBeUndefined();
+    await openApp(page);
+    expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
+    const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL);
+    expect(controller).toContain("/bridge/coi-serviceworker.js");
+    const wasm = await request.get("dds/dds_web_wasm.wasm");
+    expect(wasm.ok()).toBe(true);
+    expect(wasm.headers()["content-type"]).toBe("application/wasm");
+    const script = await request.get("dds/runtime-worker.js");
+    expect(script.ok()).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
+    await page.getByRole("button", { name: "Load example hands", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Public auction explanations / alerts", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "North / South bidding system", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "North / South leads and signals", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Start advisor", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Record North's observed opening lead", exact: true })).toBeVisible();
+    const fitsViewport = () => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+    expect(await fitsViewport()).toBe(true);
+    await page.setViewportSize({ width: 320, height: 640 });
+    expect(await fitsViewport()).toBe(true);
+});

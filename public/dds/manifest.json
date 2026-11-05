@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/dds-bridge/dds",
+  "revision": "c1dd5e03504f072d74a2c557cd15e43d7573fde6",
+  "build": "https://github.com/dds-bridge/dds/actions/runs/39312362939",
+  "source": "https://dds-bridge.github.io/dds/",
+  "files": {
+    "dds_web_wasm.js": "7b54d0bc2c4a0e817c50a4073805f9bb975520a0b5a8e061a76d9d69482848e9",
+    "dds_web_wasm.wasm": "7ba2ebed5a9873eb32a538e192143ee38c55a1c6126a7925f4ccaa4a41fce6c9",
+    "../coi-serviceworker.js": "e97bbac6017322d48aa54a5bc7ce473c725a4b7376ff245002e0ba71c3dcdd7e"
+  }
+}
