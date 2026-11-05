@@ -395,6 +395,29 @@ const parsePlayRecord = (line: string, fileName: string, lineNumber: number): Re
     return value;
 };
 
+export const readValidationRecord = async (
+    value: unknown, eligibleDeals = 1,
+): Promise<ValidationSelection> => {
+    const record = parsePlayRecord(JSON.stringify(value), "Bundled example records", 1);
+    const numericHands = readNumericHands(record.hands, "Bundled example record");
+    return readSelectedRecord(record, canonicalDealKey(numericHands), eligibleDeals);
+};
+
+export const pickRandomExampleDeal = async (
+    records: readonly unknown[],
+    options: Pick<ValidationPickOptions, "random"> = {},
+): Promise<ValidationSelection> => {
+    if (records.length === 0) throw new Error("No bundled example deals are available.");
+    const random = options.random ?? Math.random;
+    const value = random();
+    if (!Number.isFinite(value) || value < 0 || value >= 1) {
+        throw new Error("The example sampler's random source must return a value in [0, 1).");
+    }
+    const record = records[Math.floor(value * records.length)];
+    if (record === undefined) throw new Error("Could not select a bundled example deal.");
+    return readValidationRecord(record, records.length);
+};
+
 export const pickRandomValidationDeal = async (
     files: readonly File[],
     options: ValidationPickOptions = {},

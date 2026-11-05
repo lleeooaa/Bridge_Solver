@@ -6,9 +6,21 @@ export const openApp = async (page: Page): Promise<void> => {
     await expect(page.getByRole("tab", { name: "Solver / Challenge", exact: true })).toBeVisible();
 };
 
+export const fillKnownExampleHands = async (page: Page): Promise<void> => {
+    await page.locator("#advisor-declarer").selectOption("West");
+    await page.locator("#advisor-level").selectOption("1");
+    await page.locator("#advisor-strain").selectOption("no-trump");
+    await page.locator("#advisor-doubling").selectOption("undoubled");
+    await page.locator("#advisor-own-hand").fill("AJ.AQ5.96543.Q72");
+    await page.locator("#advisor-dummy-hand").fill("Q7652.32.JT.KT63");
+    await page.getByRole("combobox", { name: "Dealer", exact: true }).selectOption("West");
+    await page.getByRole("combobox", { name: "Vulnerability", exact: true }).selectOption("none");
+    await page.getByRole("textbox", { name: "Complete auction, starting with dealer", exact: true }).fill("1NT P P P");
+}
+
 export const startAdvisor = async (page: Page): Promise<void> => {
     await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
-    await page.getByRole("button", { name: "Load example hands" }).click();
+    await fillKnownExampleHands(page);
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
     await page.getByRole("button", { name: "Record KD played by North", exact: true }).click();
 };

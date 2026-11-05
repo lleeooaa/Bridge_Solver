@@ -16,11 +16,13 @@ test("plain static subpath hosting gains isolation through the scoped service wo
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
     await page.getByRole("button", { name: "Load example hands", exact: true }).click();
+    await expect(page.locator(".advisor-validation-picker [role=status]")).toContainText("Loaded a random");
+    await expect(page.getByRole("textbox", { name: "Complete auction, starting with dealer", exact: true })).not.toHaveValue("");
     await expect(page.getByRole("textbox", { name: "Public auction explanations / alerts", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "North / South bidding system", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "North / South leads and signals", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
-    await expect(page.getByRole("region", { name: "Record North's observed opening lead", exact: true })).toBeVisible();
+    await expect(page.locator(".advisor-observed-hand")).toBeVisible();
     const fitsViewport = () => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
     expect(await fitsViewport()).toBe(true);
     await page.setViewportSize({ width: 320, height: 640 });

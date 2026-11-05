@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openApp } from "./fixtures";
+import { fillKnownExampleHands, openApp } from "./fixtures";
 
 test("real browser ONNX runtime matches exported PyTorch log scores at multiple batch sizes", async ({ page }) => {
     await openApp(page);
@@ -48,29 +48,25 @@ test("real browser ONNX runtime matches exported PyTorch log scores at multiple 
     expect(Math.max(...differences)).toBeLessThan(1e-4);
 });
 
-test("learned advisor loads a real joint model, reports ESS, and explicitly switches back to uniform", async ({ page }) => {
+test("learned advisor loads the bundled mixed-system model and explicitly switches back to uniform", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await openApp(page);
+    await expect(page.locator(".advisor-disclaimer")).toContainText("bundled mixed-system auction-and-play model");
     await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
-    await page.getByRole("button", { name: "Load example hands" }).click();
-    await page.getByRole("combobox", { name: "Dealer", exact: true }).selectOption("West");
-    await page.getByRole("combobox", { name: "Vulnerability", exact: true }).selectOption("none");
-    await page.getByRole("textbox", { name: "Complete auction, starting with dealer", exact: true }).fill("1NT P P P");
+    await fillKnownExampleHands(page);
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
     await page.getByRole("button", { name: "Record KD played by North", exact: true }).click();
     await page.locator("#advisor-belief-model").selectOption("learned");
-    await page.locator("#advisor-model-url").fill("models/test-only/manifest.json");
+    await expect(page.locator("#advisor-model-url")).toHaveCount(0);
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
     await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size:");
-    await expect(page.locator(".advisor-analysis")).toContainText("TEST FIXTURE");
+    await expect(page.locator(".advisor-analysis")).toContainText("Model: human-pilot-colab v1.0.0.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Research pilot:");
     await expect(page.locator(".advisor-results tbody tr")).toHaveCount(2);
     await page.locator("#advisor-samples").selectOption("500");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("500/500");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
-    await page.locator("#advisor-model-url").fill("models/missing/manifest.json");
-    await expect(page.locator(".advisor-analysis [role=alert]")).toContainText("manifest download failed");
-    await expect(page.locator(".advisor-results")).toHaveCount(0);
     await page.locator("#advisor-belief-model").selectOption("uniform");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
     await expect(page.locator(".advisor-analysis")).toContainText("uniform hard constraints");

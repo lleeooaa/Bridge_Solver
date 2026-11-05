@@ -6,8 +6,10 @@ import {
 import { createAdvisorClient, type AdvisorClient } from "./ai/advisorClient";
 import { buildBeliefFeatures } from "./ai/belief";
 import {
-    pickRandomValidationDeal, type ValidationFullInformation,
+    pickRandomExampleDeal, pickRandomValidationDeal, type ValidationFullInformation,
+    type ValidationSelection,
 } from "./ai/validationDataset";
+import exampleDeals from "./ai/exampleDeals.json";
 import {
     VULNERABILITIES, createAdvisorContext, parseAuction, type AdvisorContext, type Vulnerability,
 } from "./ai/context";
@@ -98,14 +100,16 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const [samples, setSamples] = useState(200);
     const [seed, setSeed] = useState("1");
     const [beliefMode, setBeliefMode] = useState<"uniform" | "learned">("uniform");
-    const [modelUrl, setModelUrl] = useState(() => defaultBeliefManifestUrl(window.location.hostname));
+    const modelUrl = defaultBeliefManifestUrl(window.location.hostname);
     const [error, setError] = useState<string | null>(null);
     const [view, setView] = useState<AdvisorView | null>(null);
     const [paused, setPaused] = useState(false);
     const [retry, setRetry] = useState(0);
     const [validationFiles, setValidationFiles] = useState<readonly File[]>([]);
     const [validationBusy, setValidationBusy] = useState(false);
-    const [validationStatus, setValidationStatus] = useState("No validation dataset selected.");
+    const [validationStatus, setValidationStatus] = useState(
+        `${exampleDeals.records.length} bundled example records are ready; choose a folder to use your own dataset.`,
+    );
     const [validationBoard, setValidationBoard] = useState<ValidationBoardInfo | null>(null);
     const [validationHybridActive, setValidationHybridActive] = useState(false);
     const [validationHybridStatus, setValidationHybridStatus] = useState("");
@@ -332,50 +336,87 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         setValidationStatus(`Selected ${files.length.toLocaleString()} local files. Ready to pick a validation board.`);
     };
 
+    const applyValidationSelection = (selection: ValidationSelection): void => {
+        const sample = selection.sample;
+        validationFullInformation.current = selection.fullInformation;
+        const nextInput: AdvisorInput = {
+            contract: sample.contract,
+            declarerHand: sample.declarerHand,
+            dummyHand: sample.dummyHand,
+            context: sample.context,
+        };
+        const nextHistory: readonly PlayedCard[] = [sample.openingLead];
+        const observed = buildObservation(nextInput, nextHistory);
+        setContract(sample.contract);
+        setDeclarerText(formatHand(sample.declarerHand));
+        setDummyText(formatHand(sample.dummyHand));
+        setContext(sample.context);
+        setAuctionText(sample.auction.join(" "));
+        setHistory(nextHistory);
+        setView(null);
+        setPaused(false);
+        setInput({ ...nextInput, context: observed.context });
+        setValidationBoard({
+            dealId: sample.dealId,
+            auction: sample.auction.join(" "),
+            contract: sample.contract,
+            openingLead: sample.openingLead,
+            eligibleDeals: sample.eligibleDeals,
+        });
+    };
+
     const pickValidationBoard = async (): Promise<void> => {
-        if (validationFiles.length === 0 || validationBusy || validationHybridActive) return;
+        if (validationBusy || validationHybridActive) return;
         disposeValidationDdsSession();
         setValidationHybridStatus("");
         setValidationBusy(true);
         setValidationBoard(null);
-        setValidationStatus("Reading the local validation set...");
+        validationFullInformation.current = null;
+        setValidationStatus(validationFiles.length > 0 ? "Reading the local validation set..." : "Selecting a bundled example record...");
         setError(null);
         try {
-            const selection = await pickRandomValidationDeal(validationFiles, { onProgress: setValidationStatus });
+            const selection = validationFiles.length > 0
+                ? await pickRandomValidationDeal(validationFiles, { onProgress: setValidationStatus })
+                : await pickRandomExampleDeal(exampleDeals.records);
             const sample = selection.sample;
-            validationFullInformation.current = selection.fullInformation;
-            const nextInput: AdvisorInput = {
-                contract: sample.contract,
-                declarerHand: sample.declarerHand,
-                dummyHand: sample.dummyHand,
-                context: sample.context,
-            };
-            const nextHistory: readonly PlayedCard[] = [sample.openingLead];
-            const observed = buildObservation(nextInput, nextHistory);
+            applyValidationSelection(selection);
+            const source = validationFiles.length > 0 ? "selected dataset" : "bundled example records";
+            setValidationStatus(`Loaded ${formatContract(sample.contract)} after ${formatCard(sample.openingLead.card)}; ` +
+                `selected uniformly from ${sample.eligibleDeals.toLocaleString()} eligible unique deals in the ${source}. ` +
+                `Auction: ${sample.auction.join(" ")}.`);
+        } catch (failure: unknown) {
+            const message = messageFor(failure);
+            setError(message);
+            setValidationStatus(`Could not load a validation board: ${message}`);
+        } finally {
+            setValidationBusy(false);
+        }
+    };
+
+    const loadExampleHands = async (): Promise<void> => {
+        if (validationBusy || validationHybridActive) return;
+        setValidationBusy(true);
+        setError(null);
+        setValidationStatus("Selecting a bundled example record...");
+        try {
+            const selection = await pickRandomExampleDeal(exampleDeals.records);
+            const { sample } = selection;
             setContract(sample.contract);
             setDeclarerText(formatHand(sample.declarerHand));
             setDummyText(formatHand(sample.dummyHand));
             setContext(sample.context);
             setAuctionText(sample.auction.join(" "));
-            setHistory(nextHistory);
+            setHistory([]);
             setView(null);
             setPaused(false);
-            setInput({ ...nextInput, context: observed.context });
-            setValidationBoard({
-                dealId: sample.dealId,
-                auction: sample.auction.join(" "),
-                contract: sample.contract,
-                openingLead: sample.openingLead,
-                eligibleDeals: sample.eligibleDeals,
-            });
-            setValidationStatus(
-                `Loaded ${formatContract(sample.contract)} after ${formatCard(sample.openingLead.card)}; ` +
-                `sampled uniformly from ${sample.eligibleDeals.toLocaleString()} eligible unique deals.`,
-            );
+            setValidationBoard(null);
+            validationFullInformation.current = null;
+            setValidationStatus(`Loaded a random ${formatContract(sample.contract)} example from ${exampleDeals.records.length} records. ` +
+                `Auction: ${sample.auction.join(" ")}. Start the advisor when ready.`);
         } catch (failure: unknown) {
             const message = messageFor(failure);
             setError(message);
-            setValidationStatus(`Could not load a validation board: ${message}`);
+            setValidationStatus(`Could not load an example hand: ${message}`);
         } finally {
             setValidationBusy(false);
         }
@@ -487,12 +528,13 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                 <div className="page-tag">Library DDS + Monte Carlo</div>
             </div>
             <p className="advisor-disclaimer">
-                <strong>Belief inference:</strong> choose uniform hard constraints or an explicitly loaded mixed-system auction-and-play model.
-                No trained human model is bundled. Estimates assume double-dummy continuation in each sample, not a guaranteed playable strategy.
+                <strong>Belief inference:</strong> choose uniform hard constraints or the bundled mixed-system auction-and-play model.
+                The human-play model is a research pilot; conventions remain probabilistic and mixed systems are ambiguous.
+                Estimates assume double-dummy continuation in each sample, not a guaranteed playable strategy.
             </p>
             <section className="panel advisor-setup advisor-validation-picker" aria-labelledby="advisor-validation-title">
                 <h2 id="advisor-validation-title">Test with a validation deal</h2>
-                <p>Select the local prepared dataset folder. The app verifies and scans only the validation shards listed in its manifest; the files stay in your browser and are never uploaded. It picks a complete, unclaimed deal uniformly by unique deal, then loads its auction and recorded opening lead.</p>
+                <p>Pick from 10 bundled bridge records with complete auctions and play, or choose your own prepared dataset folder. Selected local files stay in your browser and are never uploaded.</p>
                 <input
                     ref={validationDirectoryInput}
                     id="advisor-validation-folder"
@@ -505,7 +547,7 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                 />
                 <div className="play-controls">
                     <button type="button" disabled={validationBusy || validationHybridActive} onClick={chooseValidationFolder}>Choose prepared dataset folder</button>
-                    <button type="button" disabled={validationFiles.length === 0 || validationBusy || validationHybridActive}
+                    <button type="button" disabled={validationBusy || validationHybridActive}
                         onClick={() => { void pickValidationBoard(); }}>Pick random validation board</button>
                 </div>
                 <p role="status" aria-live="polite">{validationStatus}</p>
@@ -565,16 +607,10 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                     <AdvisorContextFields value={context} auctionText={auctionText} onChange={setContext} onAuctionChange={setAuctionText} />
                     <div className="play-controls">
                         <button type="submit">Start advisor</button>
-                        <button type="button" onClick={() => {
-                            setContract({ level: 1, strain: "no-trump", declarer: "West", doubling: "undoubled" });
-                            setDeclarerText("AJ.AQ5.96543.Q72");
-                            setDummyText("Q7652.32.JT.KT63");
-                            setContext(createAdvisorContext());
-                            setAuctionText("");
-                            setError(null);
-                        }}>Load example hands</button>
+                        <button type="button" disabled={validationBusy || validationHybridActive}
+                            onClick={() => { void loadExampleHands(); }}>Load example hands</button>
                     </div>
-                    <p className="advisor-help">Example: 1NT by West, dummy East. After starting, record North's KD opening lead. No defender hand is loaded.</p>
+                    <p className="advisor-help">Loads a random bundled deal with its dealer, vulnerability and complete auction. No defender hand is exposed to the advisor.</p>
                 </form>
             ) : observation !== null && (
                 <div className="panel advisor-play">
@@ -709,11 +745,6 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                         <option value="learned">Learned mixed-system model</option>
                                     </select>
                                 </label>
-                                {beliefMode === "learned" && <label htmlFor="advisor-model-url">Model manifest URL (same origin)
-                                    <input id="advisor-model-url" value={modelUrl} onChange={(event) => {
-                                        setModelUrl(event.target.value); setPaused(false);
-                                    }} />
-                                </label>}
                                 <label htmlFor="advisor-samples">Samples
                                     <select id="advisor-samples" value={samples} onChange={(event) => { setSamples(Number(event.target.value)); setPaused(false); }}>
                                         <option value={200}>200</option><option value={500}>500</option>

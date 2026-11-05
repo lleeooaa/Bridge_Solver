@@ -6,7 +6,7 @@ import {
     type Contract, type Hands, type PlayedCard, type Rank, type Suit,
 } from "../src/bridge";
 import { buildPlayState, getLegalCards } from "../src/play";
-import { openApp, startAdvisor } from "./fixtures";
+import { fillKnownExampleHands, openApp, startAdvisor } from "./fixtures";
 
 const validationFixtureFiles = (): {
     name: string;
@@ -69,6 +69,18 @@ const validationFixtureFiles = (): {
         { name: shardName, mimeType: "application/x-ndjson", buffer: Buffer.from(shardContents) },
     ];
 };
+
+test("bundled random validation boards work without selecting a folder", async ({ page }) => {
+    await openApp(page);
+    await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Choose prepared dataset folder", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Pick random validation board", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "Pick random validation board", exact: true }).click();
+    await expect(page.locator(".advisor-validation-picker [role=status]")).toContainText("bundled example records");
+    await expect(page.locator(".advisor-validation-picker")).toContainText("Auction:");
+    await expect(page.locator(".advisor-validation-picker")).toContainText("opening lead");
+    await expect(page.getByRole("button", { name: "Start interactive hybrid play", exact: true })).toBeEnabled();
+});
 
 test("separate advisor uses only two visible hands and restores reproducible advice after undo", async ({ page }) => {
     const errors: string[] = [];
@@ -142,11 +154,11 @@ test("loads a local validation board with its auction and opening lead without e
 test("invalid visible hands and invalid analysis options surface errors", async ({ page }) => {
     await openApp(page);
     await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
-    await page.getByRole("button", { name: "Load example hands" }).click();
+    await fillKnownExampleHands(page);
     await page.locator("#advisor-dummy-hand").fill("AJ.AQ5.96543.Q72");
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("more than once");
-    await page.getByRole("button", { name: "Load example hands" }).click();
+    await fillKnownExampleHands(page);
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
     await page.getByRole("button", { name: "Record KD played by North", exact: true }).click();
     await page.getByLabel("Random seed", { exact: true }).fill("-1");
@@ -161,12 +173,13 @@ test("records validated public context and exports only versioned actor-visible 
     page.on("pageerror", (error) => errors.push(error.message));
     await openApp(page);
     await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
-    await page.getByRole("button", { name: "Load example hands" }).click();
+    await fillKnownExampleHands(page);
     await expect(page.getByRole("textbox", { name: "Public auction explanations / alerts", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "North / South bidding system", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "East / West bidding system", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "North / South leads and signals", exact: true })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "East / West leads and signals", exact: true })).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Dealer", exact: true }).selectOption("");
     await page.getByRole("textbox", { name: "Complete auction, starting with dealer", exact: true }).fill("1NT P P P");
     await page.getByRole("button", { name: "Start advisor", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("dealer");

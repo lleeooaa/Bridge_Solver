@@ -5,7 +5,8 @@ import {
     type Contract, type Hands, type PlayedCard, type Rank, type Suit,
 } from "../bridge";
 import { buildPlayState, getLegalCards } from "../play";
-import { pickRandomValidationDeal } from "./validationDataset";
+import exampleDeals from "./exampleDeals.json";
+import { pickRandomExampleDeal, pickRandomValidationDeal, readValidationRecord } from "./validationDataset";
 
 const contract: Contract = { level: 1, strain: "no-trump", declarer: "West", doubling: "undoubled" };
 
@@ -75,6 +76,21 @@ const datasetFiles = (records: readonly Record<string, unknown>[], checksum?: st
 };
 
 describe("local validation dataset picker", () => {
+    it("validates and randomly selects one of ten bundled complete bridge records", async () => {
+        expect(exampleDeals.records).toHaveLength(10);
+        const selections = await Promise.all(exampleDeals.records.map((record) => readValidationRecord(record, 10)));
+        expect(new Set(selections.map(({ sample }) => sample.dealId)).size).toBe(10);
+        for (const { sample } of selections) {
+            expect(sample.auction.length).toBeGreaterThan(0);
+            expect(sample.openingLead.player).toBeDefined();
+            expect(sample.eligibleDeals).toBe(10);
+        }
+
+        const picked = await pickRandomExampleDeal(exampleDeals.records, { random: () => 0.99 });
+        expect(picked.sample.dealId).toBe(selections[9]?.sample.dealId);
+        expect(picked.sample.eligibleDeals).toBe(10);
+    });
+
     it("verifies and samples complete deals uniformly by unique deal, preserving only public advisor inputs", async () => {
         const records = [
             createRecord(createHands(), 0),
