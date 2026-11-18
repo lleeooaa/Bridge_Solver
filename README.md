@@ -11,6 +11,10 @@ pnpm dev
 
 Open `http://localhost:3002/`. The learned model defaults to the bundled `models/belief/manifest.json`. The model is a research pilot; its advice is not a guaranteed playable strategy.
 
+## Single-dummy DDS comparison
+
+Pick a bundled example or load a complete validation deal to enable **Show DDS perfect-information suggestion**. DDS uses all four hands, including both defenders' cards; the model still sees only declarer, dummy, and public play. DDS-optimal cards are highlighted separately as a perfect-information benchmark, not as single-dummy advice.
+
 To check or build the project:
 
 ```powershell

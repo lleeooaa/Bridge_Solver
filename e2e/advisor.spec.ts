@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
-    createEmptyHands, DIRECTIONS, RANKS, SUITS,
+    createEmptyHands, DIRECTIONS, parseHandNotation, RANKS, SUITS,
     type Contract, type Hands, type PlayedCard, type Rank, type Suit,
 } from "../src/bridge";
 import { buildPlayState, getLegalCards } from "../src/play";
@@ -14,14 +14,16 @@ const validationFixtureFiles = (): {
     buffer: Buffer;
 }[] => {
     const hands: Hands = createEmptyHands();
-    for (let card = 0; card < 52; card += 1) {
-        const seat = DIRECTIONS[Math.floor(card / 13)];
-        const suit = SUITS[Math.floor(card / 13)];
-        const rank = RANKS[card % 13];
-        if (seat === undefined || suit === undefined || rank === undefined) {
-            throw new Error("Could not create a validation UI fixture.");
-        }
-        hands[seat][suit].push(rank);
+    const notations: Record<(typeof DIRECTIONS)[number], string> = {
+        North: "9.JT986.KQ82.A54",
+        East: "Q7652.32.JT.KT63",
+        South: "KT843.K74.A7.J98",
+        West: "AJ.AQ5.96543.Q72",
+    };
+    for (const seat of DIRECTIONS) {
+        const parsed = parseHandNotation(notations[seat]);
+        if (!parsed.ok) throw new Error(`Could not create the ${seat} validation hand: ${parsed.error}`);
+        hands[seat] = parsed.hand;
     }
 
     const contract: Contract = { level: 1, strain: "no-trump", declarer: "West", doubling: "undoubled" };
@@ -92,6 +94,7 @@ test("separate advisor uses only two visible hands and restores reproducible adv
     const original = await page.locator(".advisor-results tbody").innerText();
     await expect(page.getByRole("region", { name: "East Dummy hand", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "North Declarer hand", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Play JD from East", exact: true }).click();
     await expect(page.getByRole("region", { name: "Record South's observed card", exact: true })).toBeVisible();
     await expect(page.locator(".advisor-play-history")).toContainText("Trick 1");
@@ -148,6 +151,29 @@ test("loads a local validation board with its auction and opening lead without e
     await expect(page.getByRole("button", { name: "Start interactive hybrid play", exact: true })).toBeEnabled();
     await page.getByText("Auction context", { exact: true }).click();
     await expect(page.locator("details.advisor-context")).toContainText("West: 1NT");
+    expect(errors).toEqual([]);
+});
+
+test("shows a perfect-information DDS card from a complete validation deal", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await openApp(page);
+    await page.getByRole("tab", { name: "Single-dummy advisor", exact: true }).click();
+    await page.locator("#advisor-validation-folder").setInputFiles(validationFixtureFiles());
+    await expect(page.locator(".advisor-validation-picker [role=status]"))
+        .toContainText("Selected 2 local files");
+    await page.getByRole("button", { name: "Pick random validation board", exact: true }).click();
+    await expect(page.locator(".advisor-validation-picker [role=status]"))
+        .toContainText("Loaded 1NT by West");
+    await expect(page.locator(".advisor-analysis")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true })).toBeEnabled();
+    const pause = page.getByRole("button", { name: "Pause analysis", exact: true });
+    if (await pause.isVisible()) await pause.click();
+    await page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true }).click();
+    await expect(page.locator(".advisor-dds-status")).toContainText("DDS-optimal card");
+    await expect(page.locator(".advisor-dds-comparison")).toContainText("both defenders' hidden cards");
+    await expect(page.locator(".advisor-visible-hands .advisor-card.is-dds-recommended").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "North Declarer hand", exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
 });
 

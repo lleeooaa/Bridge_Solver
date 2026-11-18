@@ -87,6 +87,20 @@ interface ValidationDdsSession {
     readonly analysis: EngineAnalysisSession;
 }
 
+interface DdsAdvisorView {
+    readonly history: readonly PlayedCard[];
+    readonly recommendedCards: readonly Card[];
+    readonly optimalDeclarerTricks: number;
+}
+
+interface DdsAdvisorRequest {
+    readonly history: readonly PlayedCard[];
+    readonly input: AdvisorInput;
+    readonly dealId: string;
+    readonly controller: AbortController;
+    readonly session: EngineAnalysisSession;
+}
+
 const AdvisorBoard = ({ active }: { active: boolean }) => {
     const [contract, setContract] = useState<Contract>({
         level: 3, strain: "no-trump", declarer: "South", doubling: "undoubled",
@@ -113,11 +127,15 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const [validationBoard, setValidationBoard] = useState<ValidationBoardInfo | null>(null);
     const [validationHybridActive, setValidationHybridActive] = useState(false);
     const [validationHybridStatus, setValidationHybridStatus] = useState("");
+    const [ddsView, setDdsView] = useState<DdsAdvisorView | null>(null);
+    const [ddsPendingHistory, setDdsPendingHistory] = useState<readonly PlayedCard[] | null>(null);
+    const [ddsError, setDdsError] = useState<{ history: readonly PlayedCard[]; message: string } | null>(null);
     const client = useRef<AdvisorClient | null>(null);
     const validationDirectoryInput = useRef<HTMLInputElement | null>(null);
     const validationFullInformation = useRef<ValidationFullInformation | null>(null);
     const validationDdsSession = useRef<ValidationDdsSession | null>(null);
     const validationDdsController = useRef<AbortController | null>(null);
+    const ddsAdvisorRequest = useRef<DdsAdvisorRequest | null>(null);
     const disposeValidationDdsSession = (): void => {
         const controller = validationDdsController.current;
         validationDdsController.current = null;
@@ -142,14 +160,19 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const currentView = view?.history === history && view.samples === samples && view.seed === seed &&
         view.beliefKey === beliefKey ? view : null;
     const advice = currentView?.advice;
+    const currentDdsView = ddsView?.history === history ? ddsView : null;
+    const currentDdsError = ddsError?.history === history ? ddsError.message : null;
+    const ddsPending = ddsPendingHistory === history;
     const controlled = input !== null && observation !== null &&
         isDeclarerSide(observation.playerToMove, input.contract);
+    const hasValidationFullInformation = validationBoard !== null && validationFullInformation.current !== null;
     const playable = input === null || observation === null ? [] : getObservedPlayableCards(observation, input.contract);
     const playableKeys = new Set(playable.map(cardKey));
     const top = advice?.candidates[0];
     const recommended = new Set(advice?.candidates.filter((candidate) =>
         candidate.makeProbability === top?.makeProbability && candidate.expectedTricks === top.expectedTricks)
         .map((candidate) => cardKey(candidate.card)));
+    const ddsRecommended = new Set(currentDdsView?.recommendedCards.map(cardKey) ?? []);
 
     useEffect(() => {
         if (!active || input === null) return;
@@ -209,6 +232,23 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         const session = validationDdsSession.current;
         validationDdsSession.current = null;
         session?.analysis.dispose();
+    }, []);
+
+    useEffect(() => {
+        const request = ddsAdvisorRequest.current;
+        if (request === null || (request.history === history && request.input === input &&
+            request.dealId === validationBoard?.dealId)) return;
+        ddsAdvisorRequest.current = null;
+        request.controller.abort();
+        request.session.dispose();
+        setDdsPendingHistory((pending) => pending === request.history ? null : pending);
+    }, [history, input, validationBoard?.dealId]);
+
+    useEffect(() => () => {
+        const request = ddsAdvisorRequest.current;
+        ddsAdvisorRequest.current = null;
+        request?.controller.abort();
+        request?.session.dispose();
     }, []);
 
     useEffect(() => {
@@ -420,6 +460,65 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         } finally {
             setValidationBusy(false);
         }
+    };
+
+    const showDdsSuggestion = (): void => {
+        if (input === null || validationBoard === null || !controlled || observation?.isComplete !== false) return;
+        const fullInformation = validationFullInformation.current;
+        if (fullInformation === null) {
+            setDdsError({ history, message: "Pick a complete validation deal before requesting a perfect-information DDS suggestion." });
+            return;
+        }
+        const previous = ddsAdvisorRequest.current;
+        if (previous?.history === history && previous.input === input && previous.dealId === validationBoard.dealId) return;
+        if (previous !== null) {
+            ddsAdvisorRequest.current = null;
+            previous.controller.abort();
+            previous.session.dispose();
+        }
+
+        let session: EngineAnalysisSession;
+        try {
+            const engine = createBrowserDdsEngine(getDdsRuntimeUrl());
+            try {
+                session = createDdsAnalysisSession({ hands: fullInformation.hands, contract: input.contract }, engine);
+            } catch (failure: unknown) {
+                engine.dispose();
+                throw failure;
+            }
+        } catch (failure: unknown) {
+            setDdsError({ history, message: messageFor(failure) });
+            return;
+        }
+
+        const controller = new AbortController();
+        const request: DdsAdvisorRequest = {
+            history, input, dealId: validationBoard.dealId, controller, session,
+        };
+        ddsAdvisorRequest.current = request;
+        setDdsView(null);
+        setDdsError(null);
+        setDdsPendingHistory(history);
+        void session.analyze(history, controller.signal).then((result) => {
+            if (controller.signal.aborted || ddsAdvisorRequest.current !== request) return;
+            if (result.recommendedCards.length === 0) {
+                throw new Error("DDS did not provide an optimal card for the current position.");
+            }
+            setDdsView({
+                history,
+                recommendedCards: result.recommendedCards,
+                optimalDeclarerTricks: result.optimalDeclarerTricks,
+            });
+        }).catch((failure: unknown) => {
+            if (!controller.signal.aborted && ddsAdvisorRequest.current === request) {
+                setDdsError({ history, message: messageFor(failure) });
+            }
+        }).finally(() => {
+            if (ddsAdvisorRequest.current !== request) return;
+            ddsAdvisorRequest.current = null;
+            session.dispose();
+            setDdsPendingHistory((pending) => pending === history ? null : pending);
+        });
     };
 
     const startInteractiveHybridPlay = (): void => {
@@ -657,7 +756,11 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                         {[...RANKS].reverse().filter((rank) => hand[suit].includes(rank)).map((rank) => {
                                             const card = { suit, rank };
                                             const key = cardKey(card);
-                                            return <button type="button" key={key} className={`advisor-card ${seat === observation.playerToMove && recommended.has(key) ? "is-recommended" : ""}`}
+                                            return <button type="button" key={key} className={[
+                                                "advisor-card",
+                                                seat === observation.playerToMove && recommended.has(key) ? "is-recommended" : "",
+                                                ddsRecommended.has(key) ? "is-dds-recommended" : "",
+                                            ].filter(Boolean).join(" ")}
                                                 disabled={seat !== observation.playerToMove || !playableKeys.has(key)}
                                                 aria-label={`Play ${formatCard(card)} from ${seat}`} onClick={() => play(card)}>{formatCard(card)}</button>;
                                         })}
@@ -759,6 +862,31 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                     <button type="button" disabled={top === undefined} onClick={() => { if (top !== undefined) play(top.card); }}>Play current recommendation</button>
                                 </div>
                             </div>
+                            <div className="advisor-dds-comparison">
+                                <div className="play-controls">
+                                    <button type="button" disabled={!hasValidationFullInformation || ddsPending}
+                                        onClick={showDdsSuggestion}>
+                                        {ddsPending ? "Running DDS..." : "Show DDS perfect-information suggestion"}
+                                    </button>
+                                </div>
+                                <p className="advisor-help">
+                                    {hasValidationFullInformation
+                                        ? "DDS uses all four hands, including both defenders' hidden cards; this is a perfect-information benchmark. The model still sees only declarer, dummy and public play. Orange marks the model's recommendation; a blue inset border marks DDS-optimal card(s)."
+                                        : "Pick a bundled example or complete local validation deal to enable this comparison. Manual hand entry has no hidden defender cards for DDS to use."}
+                                </p>
+                                {ddsPending && <p className="advisor-dds-status" aria-live="polite">
+                                    Evaluating this position with full-information DDS...
+                                </p>}
+                                {currentDdsError !== null && <p className="advisor-error" role="alert">
+                                    Could not calculate the perfect-information DDS suggestion: {currentDdsError}
+                                </p>}
+                                {currentDdsView !== null && <p className="advisor-dds-status" aria-live="polite">
+                                    DDS-optimal card{currentDdsView.recommendedCards.length === 1 ? "" : "s"}:{" "}
+                                    <strong>{currentDdsView.recommendedCards.map(formatCard).join(", ")}</strong>.{" "}
+                                    With both defender hands known, declarer can make {currentDdsView.optimalDeclarerTricks} trick{currentDdsView.optimalDeclarerTricks === 1 ? "" : "s"} total;
+                                    {" "}{input.contract.level + 6} are required for {formatContract(input.contract)}.
+                                </p>}
+                            </div>
                             {currentView?.error !== undefined && <p className="advisor-error" role="alert">{currentView.error}</p>}
                             <p role="status">{paused ? "Analysis paused." : currentView?.error !== undefined ? "Analysis failed." : currentView?.pending ? beliefMode === "learned" ? "Loading model / analyzing weighted deals..." : "Analyzing compatible deals..." : advice?.complete ? "Analysis complete." : "Preparing analysis..."}{" "}
                                 {advice !== undefined
@@ -782,7 +910,10 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                         <caption>All legal cards on the same sampled deals; make probability first, expected tricks second.</caption>
                                         <thead><tr><th>Card</th><th>Make estimate</th><th>Expected tricks</th><th>{beliefMode === "learned" ? "Approx. 95% weighted interval" : "95% sampling interval"}</th></tr></thead>
                                         <tbody>{advice.candidates.map((candidate) => (
-                                            <tr key={cardKey(candidate.card)} className={recommended.has(cardKey(candidate.card)) ? "is-recommended" : ""}>
+                                            <tr key={cardKey(candidate.card)} className={[
+                                                recommended.has(cardKey(candidate.card)) ? "is-recommended" : "",
+                                                ddsRecommended.has(cardKey(candidate.card)) ? "is-dds-recommended" : "",
+                                            ].filter(Boolean).join(" ")}>
                                                 <td><button type="button" className="quiet-button" aria-label={`Play evaluated ${formatCard(candidate.card)}`} onClick={() => play(candidate.card)}>{formatCard(candidate.card)}</button></td>
                                                 <td>{percent(candidate.makeProbability)}</td><td>{candidate.expectedTricks.toFixed(2)}</td>
                                                 <td>{percent(candidate.samplingInterval[0])} - {percent(candidate.samplingInterval[1])}</td>

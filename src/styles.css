@@ -187,6 +187,25 @@
     background: #ffdfb7;
 }
 
+.advisor-card.is-dds-recommended {
+    box-shadow: inset 0 0 0 2px #3156a4;
+}
+
+.advisor-results tr.is-dds-recommended td:first-child {
+    border-left: 4px solid #3156a4;
+}
+
+.advisor-dds-comparison {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.advisor-dds-status {
+    margin: 8px 0;
+    font-weight: 650;
+}
+
 .advisor-public-trick {
     margin: 18px 0;
     padding: 14px;

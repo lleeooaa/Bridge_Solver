@@ -1,0 +1,149 @@
+{
+  "planHash": "c0c962eecb74906ad8651e9de09a7fa8826933dd8aa3180d68e904f06205c796",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-18T03:18:58.5928981Z",
+  "retryCount": 1,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "typecheck",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 typecheck D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E tsc --noEmit\r\n\r\n",
+        "durationMs": 4836
+      },
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 test D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E vitest run src\r\n\r\n\r\n RUN  v5.0.5 D:/python/AI_Vibe_projects/Bridge_Solver_GitHub_Pages\r\n\r\n\r\n Test Files  14 passed (14)\r\n      Tests  222 passed (222)\r\n   Start at  11:17:51\r\n   Duration  48.15s (tests 95%, import 2%, worker 1%, transform 1%)\r\n\r\n",
+        "durationMs": 49749,
+        "testResults": {
+          "testFramework": "vitest",
+          "runnerDetectedFrom": "package_json",
+          "testsTotal": 222,
+          "testsPassed": 222,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": false
+        }
+      },
+      {
+        "name": "production-build",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 build D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E pnpm verify:dds \u0026\u0026 pnpm verify:model-distribution \u0026\u0026 node scripts/stage-belief-runtime.mjs \u0026\u0026 rsbuild build\r\n\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:dds D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-dds.mjs\r\n\r\nVerified DDS assets at upstream revision c1dd5e03504f072d74a2c557cd15e43d7573fde6.\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:model-distribution D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-model-distribution.mjs\r\n\r\nPublic model distribution checks passed.\r\nRsbuild v2.2.14\r\n\r\ninfo    build started...\r\nready   built in 0.26s\r\n\r\nFile (web)                                       Size       Gzip   \r\ndist\\index.html                                  0.95 kB    0.49 kB\r\ndist\\static\\js\\async\\f.69c31d13b8.js             4.6 kB     2.1 kB\r\ndist\\static\\js\\async\\ma.b62bb495ff.js            7.9 kB     3.2 kB\r\ndist\\static\\js\\async\\3.639a783161.js             21.7 kB    8.3 kB\r\ndist\\static\\css\\index.a4c87a1395.css             28.7 kB    6.8 kB\r\ndist\\static\\js\\async\\m.4672a3dc0a.js             47.8 kB    15.3 kB\r\ndist\\static\\assets\\ort.wasm.min.0d85fb22ee.mjs   48.3 kB    15.3 kB\r\ndist\\static\\js\\index.1f2dfdbce6.js               109.5 kB   30.4 kB\r\ndist\\static\\js\\lib-react.78a7a00a49.js           218.2 kB   68.7 kB\r\n\r\n                                        Total:   487.6 kB   150.4 kB\r\n\r\n",
+        "durationMs": 4094
+      },
+      {
+        "name": "home-page-served",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!doctype html\u003E\r\n\u003Chtml lang=\u0022en\u0022\u003E\r\n    \u003Chead\u003E\r\n        \u003Cmeta charset=\u0022UTF-8\u0022 /\u003E\r\n        \u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1.0\u0022 /\u003E\r\n        \u003Cmeta\r\n            name=\u0022description\u0022\r\n            content=\u0022Analyze bridge deals with library DDS or explore single-dummy advice from two visible hands.\u0022\r\n        /\u003E\r\n        \u003Cmeta name=\u0022theme-color\u0022 content=\u0022#f4f6f4\u0022 /\u003E\r\n        \u003Ctitle\u003EBridge Solver | Deal Builder\u003C/title\u003E\r\n        \u003Cscript\u003E\r\n            window.coi = {\r\n                doReload: () =\u003E navigator.serviceWorker.ready.then(() =\u003E window.location.reload()),\r\n            };\r\n        \u003C/script\u003E\r\n        \u003Cscript src=\u0022./coi-serviceworker.js\u0022\u003E\u003C/script\u003E\r\n    \u003Cscript defer src=\u0022/static/js/lib-react.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/vendors-node_modules_pnpm_rsbuild_core_2_2_14_node_modules_rsbuild_core_dist_client_overlay_js.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/src_dds_browser_ts-data_text_javascript_import_20_7B_20init_20_7D_20from_20_D_3A_2Fpython_2FA-9b4686.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/src_ai_belief_ts.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/index.js\u0022\u003E\u003C/script\u003E\u003Clink href=\u0022/static/css/index.css\u0022 rel=\u0022stylesheet\u0022\u003E\u003C/head\u003E\r\n    \u003Cbody\u003E\r\n        \u003Cdiv id=\u0022root\u0022\u003E\u003C/div\u003E\r\n    \u003C/body\u003E\r\n\u003C/html\u003E\r\n\n--- server output ---\n\r\n\u003E bridge-solver-ui@0.1.0 dev D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E rsbuild dev --port 3002 --strict-port\r\n\r\nRsbuild v2.2.14\r\n\r\n  \u279C  Local:    http://localhost:3002/\r\n  \u279C  Network:  use --host to expose\r\n\r\nstart   build started...\r\nready   built in 0.13s\r\n",
+        "durationMs": 1574
+      },
+      {
+        "name": "dds-comparison-e2e",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\nRunning 1 test using 1 worker\r\n\r\n  ok 1 e2e\\advisor.spec.ts:157:1 \u203A shows a perfect-information DDS card from a complete validation deal (3.6s)\r\n\r\n  1 passed (11.1s)\r\n",
+        "durationMs": 13135
+      }
+    ],
+    "executions": [
+      {
+        "source": "typecheck",
+        "resolvedExecutable": "C:\\Users\\69012\\AppData\\Roaming\\npm\\pnpm.CMD",
+        "args": [
+          "run",
+          "typecheck"
+        ],
+        "cwd": "D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "C:\\Users\\69012\\AppData\\Roaming\\npm\\pnpm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "production-build",
+        "resolvedExecutable": "C:\\Users\\69012\\AppData\\Roaming\\npm\\pnpm.CMD",
+        "args": [
+          "run",
+          "build"
+        ],
+        "cwd": "D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "home-page-served",
+        "resolvedExecutable": "C:\\Users\\69012\\AppData\\Roaming\\npm\\pnpm.CMD",
+        "args": [
+          "run",
+          "dev"
+        ],
+        "cwd": "D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "dds-comparison-e2e",
+        "resolvedExecutable": "C:\\Users\\69012\\AppData\\Roaming\\npm\\pnpm.CMD",
+        "args": [
+          "exec",
+          "playwright",
+          "test",
+          "e2e/advisor.spec.ts",
+          "--grep",
+          "shows a perfect-information DDS card from a complete validation deal"
+        ],
+        "cwd": "D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

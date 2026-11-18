@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-11-18T03:11:40Z",
+  "generatedOnPlatform": "win32",
+  "projectType": "webapp",
+  "assertions": [
+    {
+      "name": "typecheck",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["run", "typecheck"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "tests-pass",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["test"],
+      "verificationMethod": "test-results",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "production-build",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["run", "build"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 360
+    },
+    {
+      "name": "home-page-served",
+      "kind": "http-probe",
+      "startCommand": "pnpm",
+      "startArgs": ["run", "dev"],
+      "url": "http://localhost:3002/",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "dds-comparison-e2e",
+      "kind": "process",
+      "command": "pnpm",
+      "args": [
+        "exec",
+        "playwright",
+        "test",
+        "e2e/advisor.spec.ts",
+        "--grep",
+        "shows a perfect-information DDS card from a complete validation deal"
+      ],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 360
+    }
+  ]
+}
