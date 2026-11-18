@@ -94,7 +94,9 @@ test("separate advisor uses only two visible hands and restores reproducible adv
     const original = await page.locator(".advisor-results tbody").innerText();
     await expect(page.getByRole("region", { name: "East Dummy hand", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "North Declarer hand", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true })).toBeDisabled();
+    await expect(page.getByRole("switch", {
+        name: "Automatically update DDS perfect-information suggestions", exact: true,
+    })).toBeDisabled();
     await page.getByRole("button", { name: "Play JD from East", exact: true }).click();
     await expect(page.getByRole("region", { name: "Record South's observed card", exact: true })).toBeVisible();
     await expect(page.locator(".advisor-play-history")).toContainText("Trick 1");
@@ -154,7 +156,7 @@ test("loads a local validation board with its auction and opening lead without e
     expect(errors).toEqual([]);
 });
 
-test("shows a perfect-information DDS card from a complete validation deal", async ({ page }) => {
+test("automatically updates perfect-information DDS suggestions while enabled", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await openApp(page);
@@ -166,14 +168,37 @@ test("shows a perfect-information DDS card from a complete validation deal", asy
     await expect(page.locator(".advisor-validation-picker [role=status]"))
         .toContainText("Loaded 1NT by West");
     await expect(page.locator(".advisor-analysis")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true })).toBeEnabled();
+    const ddsToggle = page.getByRole("switch", {
+        name: "Automatically update DDS perfect-information suggestions", exact: true,
+    });
+    await expect(ddsToggle).toBeEnabled();
+    await expect(ddsToggle).not.toBeChecked();
+    await expect(page.locator(".advisor-dds-status")).toHaveCount(0);
     const pause = page.getByRole("button", { name: "Pause analysis", exact: true });
     if (await pause.isVisible()) await pause.click();
-    await page.getByRole("button", { name: "Show DDS perfect-information suggestion", exact: true }).click();
+    const ddsToggleLabel = page.locator(".advisor-dds-toggle");
+    await ddsToggleLabel.click();
+    await expect(ddsToggle).toBeChecked();
     await expect(page.locator(".advisor-dds-status")).toContainText("DDS-optimal card");
     await expect(page.locator(".advisor-dds-comparison")).toContainText("both defenders' hidden cards");
     await expect(page.locator(".advisor-visible-hands .advisor-card.is-dds-recommended").first()).toBeVisible();
     await expect(page.getByRole("region", { name: "North Declarer hand", exact: true })).toHaveCount(0);
+
+    await page.locator(".advisor-visible-hands button:not([disabled])").first().click();
+    await expect(page.getByRole("region", { name: "Record South's observed card", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Record KS played by South", exact: true }).click();
+    await expect(page.getByRole("region", { name: "West Declarer hand", exact: true })).toBeVisible();
+    await expect(page.locator(".advisor-dds-status")).toContainText("DDS-optimal card");
+
+    await ddsToggleLabel.click();
+    await expect(ddsToggle).not.toBeChecked();
+    await page.locator(".advisor-visible-hands button:not([disabled])").first().click();
+    for (let defenderPlay = 0; defenderPlay < 2 && !(await page.locator(".advisor-analysis").isVisible()); defenderPlay += 1) {
+        await page.locator(".advisor-observed-hand .advisor-card").first().click();
+    }
+    await expect(page.locator(".advisor-analysis")).toBeVisible();
+    await expect(ddsToggle).not.toBeChecked();
+    await expect(page.locator(".advisor-dds-status")).toHaveCount(0);
     expect(errors).toEqual([]);
 });
 

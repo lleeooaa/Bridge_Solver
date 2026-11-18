@@ -201,9 +201,71 @@
     border-top: 1px solid var(--line);
 }
 
+.advisor-dds-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.advisor-dds-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.advisor-dds-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex: none;
+    border-radius: 12px;
+    background: #c4cdc8;
+    transition: background-color 150ms ease;
+}
+
+.advisor-dds-switch::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    content: "";
+    transition: transform 150ms ease;
+}
+
+.advisor-dds-toggle input:checked + .advisor-dds-switch {
+    background: #3156a4;
+}
+
+.advisor-dds-toggle input:checked + .advisor-dds-switch::after {
+    transform: translateX(20px);
+}
+
+.advisor-dds-toggle input:focus-visible + .advisor-dds-switch {
+    outline: 3px solid var(--green-dark);
+    outline-offset: 3px;
+}
+
+.advisor-dds-toggle input:disabled + .advisor-dds-switch {
+    opacity: 0.5;
+}
+
 .advisor-dds-status {
     margin: 8px 0;
     font-weight: 650;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .advisor-dds-switch, .advisor-dds-switch::after {
+        transition: none;
+    }
 }
 
 .advisor-public-trick {

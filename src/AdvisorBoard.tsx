@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
     DIRECTIONS, RANKS, SUITS, formatHand, parseHandNotation,
     type Card, type Contract, type EngineAnalysisSession, type PlayedCard, type SolverInput,
@@ -98,7 +98,12 @@ interface DdsAdvisorRequest {
     readonly input: AdvisorInput;
     readonly dealId: string;
     readonly controller: AbortController;
-    readonly session: EngineAnalysisSession;
+}
+
+interface DdsAdvisorSession {
+    readonly input: AdvisorInput;
+    readonly dealId: string;
+    readonly analysis: EngineAnalysisSession;
 }
 
 const AdvisorBoard = ({ active }: { active: boolean }) => {
@@ -130,12 +135,14 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const [ddsView, setDdsView] = useState<DdsAdvisorView | null>(null);
     const [ddsPendingHistory, setDdsPendingHistory] = useState<readonly PlayedCard[] | null>(null);
     const [ddsError, setDdsError] = useState<{ history: readonly PlayedCard[]; message: string } | null>(null);
+    const [ddsAutoEnabled, setDdsAutoEnabled] = useState(false);
     const client = useRef<AdvisorClient | null>(null);
     const validationDirectoryInput = useRef<HTMLInputElement | null>(null);
     const validationFullInformation = useRef<ValidationFullInformation | null>(null);
     const validationDdsSession = useRef<ValidationDdsSession | null>(null);
     const validationDdsController = useRef<AbortController | null>(null);
     const ddsAdvisorRequest = useRef<DdsAdvisorRequest | null>(null);
+    const ddsAdvisorSession = useRef<DdsAdvisorSession | null>(null);
     const disposeValidationDdsSession = (): void => {
         const controller = validationDdsController.current;
         validationDdsController.current = null;
@@ -173,6 +180,74 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         candidate.makeProbability === top?.makeProbability && candidate.expectedTricks === top.expectedTricks)
         .map((candidate) => cardKey(candidate.card)));
     const ddsRecommended = new Set(currentDdsView?.recommendedCards.map(cardKey) ?? []);
+
+    const requestDdsSuggestion = useCallback((): void => {
+        if (input === null || validationBoard === null || !controlled || observation?.isComplete !== false) return;
+        const fullInformation = validationFullInformation.current;
+        if (fullInformation === null) {
+            setDdsError({ history, message: "Pick a complete validation deal before requesting a perfect-information DDS suggestion." });
+            return;
+        }
+        const previous = ddsAdvisorRequest.current;
+        if (previous?.history === history && previous.input === input && previous.dealId === validationBoard.dealId) return;
+        if (previous !== null) {
+            ddsAdvisorRequest.current = null;
+            previous.controller.abort();
+        }
+
+        let currentSession = ddsAdvisorSession.current;
+        if (currentSession !== null &&
+            (currentSession.dealId !== validationBoard.dealId || currentSession.input !== input)) {
+            currentSession.analysis.dispose();
+            ddsAdvisorSession.current = null;
+            currentSession = null;
+        }
+        try {
+            if (currentSession === null) {
+                const engine = createBrowserDdsEngine(getDdsRuntimeUrl());
+                let analysis: EngineAnalysisSession;
+                try {
+                    analysis = createDdsAnalysisSession({ hands: fullInformation.hands, contract: input.contract }, engine);
+                } catch (failure: unknown) {
+                    engine.dispose();
+                    throw failure;
+                }
+                currentSession = { dealId: validationBoard.dealId, input, analysis };
+                ddsAdvisorSession.current = currentSession;
+            }
+        } catch (failure: unknown) {
+            setDdsError({ history, message: messageFor(failure) });
+            return;
+        }
+
+        const controller = new AbortController();
+        const request: DdsAdvisorRequest = {
+            history, input, dealId: validationBoard.dealId, controller,
+        };
+        ddsAdvisorRequest.current = request;
+        setDdsView(null);
+        setDdsError(null);
+        setDdsPendingHistory(history);
+        void currentSession.analysis.analyze(history, controller.signal).then((result) => {
+            if (controller.signal.aborted || ddsAdvisorRequest.current !== request) return;
+            if (result.recommendedCards.length === 0) {
+                throw new Error("DDS did not provide an optimal card for the current position.");
+            }
+            setDdsView({
+                history,
+                recommendedCards: result.recommendedCards,
+                optimalDeclarerTricks: result.optimalDeclarerTricks,
+            });
+        }).catch((failure: unknown) => {
+            if (!controller.signal.aborted && ddsAdvisorRequest.current === request) {
+                setDdsError({ history, message: messageFor(failure) });
+            }
+        }).finally(() => {
+            if (ddsAdvisorRequest.current !== request) return;
+            ddsAdvisorRequest.current = null;
+            setDdsPendingHistory((pending) => pending === history ? null : pending);
+        });
+    }, [controlled, history, input, observation, validationBoard]);
 
     useEffect(() => {
         if (!active || input === null) return;
@@ -236,19 +311,36 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
 
     useEffect(() => {
         const request = ddsAdvisorRequest.current;
-        if (request === null || (request.history === history && request.input === input &&
-            request.dealId === validationBoard?.dealId)) return;
+        if (request === null) return;
+        if (active && ddsAutoEnabled && hasValidationFullInformation && controlled &&
+            observation?.isComplete === false && request.history === history && request.input === input &&
+            request.dealId === validationBoard?.dealId) return;
         ddsAdvisorRequest.current = null;
         request.controller.abort();
-        request.session.dispose();
         setDdsPendingHistory((pending) => pending === request.history ? null : pending);
-    }, [history, input, validationBoard?.dealId]);
+    }, [active, controlled, ddsAutoEnabled, hasValidationFullInformation, history, input, observation?.isComplete, validationBoard?.dealId]);
+
+    useEffect(() => {
+        const session = ddsAdvisorSession.current;
+        if (session === null) return;
+        if (active && ddsAutoEnabled && hasValidationFullInformation &&
+            session.dealId === validationBoard?.dealId && session.input === input) return;
+        ddsAdvisorSession.current = null;
+        session.analysis.dispose();
+    }, [active, ddsAutoEnabled, hasValidationFullInformation, input, validationBoard?.dealId]);
+
+    useEffect(() => {
+        if (!active || !ddsAutoEnabled || !hasValidationFullInformation) return;
+        requestDdsSuggestion();
+    }, [active, ddsAutoEnabled, hasValidationFullInformation, requestDdsSuggestion]);
 
     useEffect(() => () => {
         const request = ddsAdvisorRequest.current;
         ddsAdvisorRequest.current = null;
         request?.controller.abort();
-        request?.session.dispose();
+        const session = ddsAdvisorSession.current;
+        ddsAdvisorSession.current = null;
+        session?.analysis.dispose();
     }, []);
 
     useEffect(() => {
@@ -460,65 +552,6 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         } finally {
             setValidationBusy(false);
         }
-    };
-
-    const showDdsSuggestion = (): void => {
-        if (input === null || validationBoard === null || !controlled || observation?.isComplete !== false) return;
-        const fullInformation = validationFullInformation.current;
-        if (fullInformation === null) {
-            setDdsError({ history, message: "Pick a complete validation deal before requesting a perfect-information DDS suggestion." });
-            return;
-        }
-        const previous = ddsAdvisorRequest.current;
-        if (previous?.history === history && previous.input === input && previous.dealId === validationBoard.dealId) return;
-        if (previous !== null) {
-            ddsAdvisorRequest.current = null;
-            previous.controller.abort();
-            previous.session.dispose();
-        }
-
-        let session: EngineAnalysisSession;
-        try {
-            const engine = createBrowserDdsEngine(getDdsRuntimeUrl());
-            try {
-                session = createDdsAnalysisSession({ hands: fullInformation.hands, contract: input.contract }, engine);
-            } catch (failure: unknown) {
-                engine.dispose();
-                throw failure;
-            }
-        } catch (failure: unknown) {
-            setDdsError({ history, message: messageFor(failure) });
-            return;
-        }
-
-        const controller = new AbortController();
-        const request: DdsAdvisorRequest = {
-            history, input, dealId: validationBoard.dealId, controller, session,
-        };
-        ddsAdvisorRequest.current = request;
-        setDdsView(null);
-        setDdsError(null);
-        setDdsPendingHistory(history);
-        void session.analyze(history, controller.signal).then((result) => {
-            if (controller.signal.aborted || ddsAdvisorRequest.current !== request) return;
-            if (result.recommendedCards.length === 0) {
-                throw new Error("DDS did not provide an optimal card for the current position.");
-            }
-            setDdsView({
-                history,
-                recommendedCards: result.recommendedCards,
-                optimalDeclarerTricks: result.optimalDeclarerTricks,
-            });
-        }).catch((failure: unknown) => {
-            if (!controller.signal.aborted && ddsAdvisorRequest.current === request) {
-                setDdsError({ history, message: messageFor(failure) });
-            }
-        }).finally(() => {
-            if (ddsAdvisorRequest.current !== request) return;
-            ddsAdvisorRequest.current = null;
-            session.dispose();
-            setDdsPendingHistory((pending) => pending === history ? null : pending);
-        });
     };
 
     const startInteractiveHybridPlay = (): void => {
@@ -863,19 +896,20 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                 </div>
                             </div>
                             <div className="advisor-dds-comparison">
-                                <div className="play-controls">
-                                    <button type="button" disabled={!hasValidationFullInformation || ddsPending}
-                                        onClick={showDdsSuggestion}>
-                                        {ddsPending ? "Running DDS..." : "Show DDS perfect-information suggestion"}
-                                    </button>
-                                </div>
+                                <label className="advisor-dds-toggle">
+                                    <input type="checkbox" role="switch" checked={ddsAutoEnabled}
+                                        disabled={!hasValidationFullInformation}
+                                        onChange={(event) => setDdsAutoEnabled(event.currentTarget.checked)} />
+                                    <span className="advisor-dds-switch" aria-hidden="true" />
+                                    <span>Automatically update DDS perfect-information suggestions</span>
+                                </label>
                                 <p className="advisor-help">
                                     {hasValidationFullInformation
-                                        ? "DDS uses all four hands, including both defenders' hidden cards; this is a perfect-information benchmark. The model still sees only declarer, dummy and public play. Orange marks the model's recommendation; a blue inset border marks DDS-optimal card(s)."
-                                        : "Pick a bundled example or complete local validation deal to enable this comparison. Manual hand entry has no hidden defender cards for DDS to use."}
+                                        ? "DDS uses all four hands, including both defenders' hidden cards; this is a perfect-information benchmark. When enabled, it recalculates at each declarer/dummy decision. The model still sees only declarer, dummy and public play. Orange marks the model's recommendation; a blue inset border marks DDS-optimal card(s)."
+                                        : "Pick a bundled example or complete local validation deal to enable automatic comparison. Manual hand entry has no hidden defender cards for DDS to use."}
                                 </p>
-                                {ddsPending && <p className="advisor-dds-status" aria-live="polite">
-                                    Evaluating this position with full-information DDS...
+                                {ddsAutoEnabled && ddsPending && <p className="advisor-dds-status" aria-live="polite">
+                                    Recalculating this position with full-information DDS...
                                 </p>}
                                 {currentDdsError !== null && <p className="advisor-error" role="alert">
                                     Could not calculate the perfect-information DDS suggestion: {currentDdsError}

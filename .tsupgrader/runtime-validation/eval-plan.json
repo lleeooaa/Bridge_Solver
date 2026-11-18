@@ -50,7 +50,7 @@
         "test",
         "e2e/advisor.spec.ts",
         "--grep",
-        "shows a perfect-information DDS card from a complete validation deal"
+        "automatically updates perfect-information DDS suggestions while enabled"
       ],
       "verificationMethod": "exit-code",
       "expected": "0",
