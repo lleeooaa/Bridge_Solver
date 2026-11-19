@@ -9,6 +9,10 @@ import {
     pickRandomExampleDeal, pickRandomValidationDeal, type ValidationFullInformation,
     type ValidationSelection,
 } from "./ai/validationDataset";
+import {
+    createValidationHybridHistory, recordValidationHybridDecision, undoValidationHybridDecision,
+    type ValidationHybridCheckpoints,
+} from "./ai/validationHybridHistory";
 import exampleDeals from "./ai/exampleDeals.json";
 import {
     VULNERABILITIES, createAdvisorContext, parseAuction, type AdvisorContext, type Vulnerability,
@@ -141,12 +145,17 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const validationFullInformation = useRef<ValidationFullInformation | null>(null);
     const validationDdsSession = useRef<ValidationDdsSession | null>(null);
     const validationDdsController = useRef<AbortController | null>(null);
+    const validationHybridDecisionCheckpoints = useRef<ValidationHybridCheckpoints>([]);
     const ddsAdvisorRequest = useRef<DdsAdvisorRequest | null>(null);
     const ddsAdvisorSession = useRef<DdsAdvisorSession | null>(null);
-    const disposeValidationDdsSession = (): void => {
+    const cancelValidationDdsTurn = (): void => {
         const controller = validationDdsController.current;
         validationDdsController.current = null;
         controller?.abort();
+    };
+    const disposeValidationDdsSession = (): void => {
+        cancelValidationDdsTurn();
+        validationHybridDecisionCheckpoints.current = [];
         const current = validationDdsSession.current;
         validationDdsSession.current = null;
         current?.analysis.dispose();
@@ -173,6 +182,12 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const controlled = input !== null && observation !== null &&
         isDeclarerSide(observation.playerToMove, input.contract);
     const hasValidationFullInformation = validationBoard !== null && validationFullInformation.current !== null;
+    const canUndo = validationHybridActive
+        ? validationHybridDecisionCheckpoints.current.length > 0
+        : history.length > 0;
+    const canRestart = validationHybridActive
+        ? validationBoard !== null && history.length > 1
+        : history.length > 0;
     const playable = input === null || observation === null ? [] : getObservedPlayableCards(observation, input.contract);
     const playableKeys = new Set(playable.map(cardKey));
     const top = advice?.candidates[0];
@@ -377,10 +392,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
             if (nextObservation.isComplete) {
                 const made = nextObservation.declarerTricksWon >= input.contract.level + 6;
                 setValidationHybridStatus(
-                    `Hybrid play complete: ${nextObservation.declarerTricksWon} declarer tricks; ${made ? "contract made" : "contract set"}.`,
+                    `Hybrid play complete: ${nextObservation.declarerTricksWon} declarer tricks; ${made ? "contract made" : "contract set"}. Undo a decision or restart from the recorded opening lead, or stop hybrid play.`,
                 );
-                setValidationHybridActive(false);
-                disposeValidationDdsSession();
             } else {
                 setValidationHybridStatus(
                     `DDS played ${formatPlayedCard(played)}. The model will analyze the next declarer/dummy decision.`,
@@ -576,7 +589,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
             validationDdsSession.current = { dealId: validationBoard.dealId, analysis: ddsSession };
             ddsSession = null;
             ddsEngine = null;
-            setHistory([validationBoard.openingLead]);
+            validationHybridDecisionCheckpoints.current = [];
+            setHistory(createValidationHybridHistory(validationBoard.openingLead));
             setValidationHybridStatus(
                 `Interactive hybrid play started with the recorded opening lead ${formatPlayedCard(validationBoard.openingLead)}. ` +
                 "Choose declarer/dummy cards; full-information DDS will play the defenders.",
@@ -603,11 +617,51 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
         setValidationHybridStatus("Interactive hybrid play stopped. Defender cards can now be entered manually.");
     };
 
+    const undoPlay = (): void => {
+        if (validationHybridActive) {
+            const undone = undoValidationHybridDecision(validationHybridDecisionCheckpoints.current);
+            if (undone === null) return;
+            cancelValidationDdsTurn();
+            validationHybridDecisionCheckpoints.current = undone.checkpoints;
+            setHistory(undone.history);
+            setValidationHybridStatus(
+                "Undid the last declarer/dummy decision and all DDS defensive cards that followed.",
+            );
+        } else {
+            setHistory(history.slice(0, -1));
+        }
+        setError(null);
+        setView(null);
+        setPaused(false);
+    };
+
+    const restartPlay = (): void => {
+        setError(null);
+        setView(null);
+        setPaused(false);
+        if (validationHybridActive && validationBoard !== null) {
+            cancelValidationDdsTurn();
+            validationHybridDecisionCheckpoints.current = [];
+            setHistory(createValidationHybridHistory(validationBoard.openingLead));
+            setValidationHybridStatus(
+                `Hybrid play restarted after the recorded opening lead ${formatPlayedCard(validationBoard.openingLead)}.`,
+            );
+            return;
+        }
+        validationHybridDecisionCheckpoints.current = [];
+        setHistory([]);
+    };
+
     const play = (card: Card): void => {
         if (input === null || observation === null) return;
         try {
             const next = [...history, { player: observation.playerToMove, card }];
             const nextObservation = buildObservation(input, next);
+            if (validationHybridActive && isDeclarerSide(observation.playerToMove, input.contract)) {
+                validationHybridDecisionCheckpoints.current = recordValidationHybridDecision(
+                    validationHybridDecisionCheckpoints.current, history,
+                );
+            }
             setError(null);
             setPaused(false);
             setHistory(next);
@@ -615,10 +669,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                 if (nextObservation.isComplete) {
                     const made = nextObservation.declarerTricksWon >= input.contract.level + 6;
                     setValidationHybridStatus(
-                        `Hybrid play complete: ${nextObservation.declarerTricksWon} declarer tricks; ${made ? "contract made" : "contract set"}.`,
+                        `Hybrid play complete: ${nextObservation.declarerTricksWon} declarer tricks; ${made ? "contract made" : "contract set"}. Undo a decision or restart from the recorded opening lead, or stop hybrid play.`,
                     );
-                    setValidationHybridActive(false);
-                    disposeValidationDdsSession();
                 } else if (isDeclarerSide(nextObservation.playerToMove, input.contract)) {
                     setValidationHybridStatus("Your card was played. The model will analyze the next declarer/dummy decision.");
                 } else {
@@ -752,12 +804,10 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                             <p>{observation.isComplete ? "Play complete" : `${observation.playerToMove} to play`} | Declarer {observation.declarerTricksWon}, defenders {observation.defenderTricksWon} | {history.length}/52 cards</p>
                         </div>
                         <div className="play-controls">
-                            <button type="button" disabled={history.length === 0 || validationHybridActive} onClick={() => {
-                                setHistory(history.slice(0, -1)); setError(null); setPaused(false);
-                            }}>Undo one card</button>
-                            <button type="button" disabled={history.length === 0 || validationHybridActive} onClick={() => {
-                                setHistory([]); setError(null); setPaused(false);
-                            }}>Restart play</button>
+                            <button type="button" disabled={!canUndo} onClick={undoPlay}>
+                                {validationHybridActive ? "Undo last declarer/dummy decision" : "Undo one card"}
+                            </button>
+                            <button type="button" disabled={!canRestart} onClick={restartPlay}>Restart play</button>
                             <button type="button" disabled={validationHybridActive} onClick={() => {
                                 disposeValidationDdsSession();
                                 setValidationHybridStatus("");

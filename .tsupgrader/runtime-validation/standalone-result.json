@@ -1,8 +1,8 @@
 {
   "planHash": "aa75d33a5364c43869105a5f80fc7fe7a4b6c003e2945a094324afd6561c0a0f",
   "phase": "standalone",
-  "recordedAtUtc": "2026-11-18T04:30:56.9978996Z",
-  "retryCount": 1,
+  "recordedAtUtc": "2026-11-19T07:11:22.7335315Z",
+  "retryCount": 0,
   "resetBaseline": false,
   "complete": true,
   "result": {
@@ -20,25 +20,25 @@
         "skippedReason": null,
         "exitCode": 0,
         "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 typecheck D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E tsc --noEmit\r\n\r\n",
-        "durationMs": 4300
+        "durationMs": 3966
       },
       {
         "name": "tests-pass",
         "kind": "process",
         "verificationMethod": "test-results",
-        "passed": false,
+        "passed": true,
         "timedOut": false,
         "skipped": false,
         "skippedReason": null,
-        "exitCode": 1,
-        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 test D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E vitest run src\r\n\r\n\r\n RUN  v5.0.5 D:/python/AI_Vibe_projects/Bridge_Solver_GitHub_Pages\r\n\r\n\r\n\u003C--- Last few GCs ---\u003E\r\n\r\n[25036:0000015DA1B2C000]      210 ms: Scavenge 6.6 (8.2) -\u003E 6.2 (10.8) MB, pooled: 0 MB, 3.20 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure; \r\n[25036:0000015DA1B2C000]      263 ms: Mark-Compact (reduce) 6.8 (10.8) -\u003E 5.9 (8.0) MB, pooled: 0 MB, 35.41 / 0.00 ms  (average mu = 0.862, current mu = 0.862) memory pressure; GC in old space requested\r\n\r\n\r\n\u003C--- JS stacktrace ---\u003E\r\n\r\nFATAL ERROR: Committing semi space failed. Allocation failed - JavaScript heap out of memory\r\n----- Native stack trace -----\r\n\r\n 1: 00007FF62384A39D node::SetCppgcReference\u002B17725\r\n 2: 00007FF6237B1F58 v8::base::CPU::num_virtual_address_bits\u002B92344\r\n 3: 00007FF624332F91 v8::Isolate::ReportExternalAllocationLimitReached\u002B65\r\n 4: 00007FF62431FC16 v8::Function::Experimental_IsNopFunction\u002B2870\r\n 5: 00007FF62416CE70 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase\u002B31456\r\n 6: 00007FF624125983 v8::PrimitiveArray::Length\u002B130291\r\n 7: 00007FF624175FBF v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase\u002B68655\r\n 8: 00007FF624166802 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase\u002B5234\r\n 9: 00007FF624162205 v8::CpuProfileNode::GetScriptResourceNameStr\u002B188453\r\n10: 00007FF623AE557D BIO_ssl_shutdown\u002B189\r\n11: 7FF8000000000000 \r\n \u276F src/solver.test.ts (159 tests | 1 failed) 79440ms\r\n   \u276F contract proof (65)\r\n     \u00D7 matches exhaustive minimax and preserves the optimal value along every replay prefix (seed 31) 34841ms\r\n\r\n\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF Failed Tests 1 \u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\r\n\r\n FAIL  src/solver.test.ts \u003E contract proof \u003E matches exhaustive minimax and preserves the optimal value along every replay prefix (seed 31)\r\nError: Test timed out in 30000ms.\r\nIf this is a long-running test, pass a timeout value as the last argument or configure it globally with \u0022testTimeout\u0022.\r\n \u276F src/solver.test.ts:280:65\r\n    278|     });\r\n    279|\r\n    280|     it.each(Array.from({ length: 40 }, (_, index) =\u003E index \u002B 1))(\r\n       |                                                                 ^\r\n    281|         \u0022matches exhaustive minimax and preserves the optimal value al\u2026\r\n    282|         (seed) =\u003E {\r\n\r\n\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF[1/1]\u23AF\r\n\r\n\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF Unhandled Errors \u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\r\n\r\nVitest caught 1 unhandled error during the test run.\r\nThis might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.\r\n\r\n\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF Unhandled Error \u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\r\nError: [vitest-pool]: Worker forks emitted error.\r\n \u276F EventEmitter.onTaskError node_modules/.pnpm/vitest@5.0.5_@types\u002Bnode@26_5392d1d3bc50c5e5b0a2b339feefa1e7/node_modules/vitest/dist/chunks/index.1TqnEahn.js:5915:21\r\n \u276F EventEmitter.emit node:events:518:28\r\n \u276F ChildProcess.emitUnexpectedExit node_modules/.pnpm/vitest@5.0.5_@types\u002Bnode@26_5392d1d3bc50c5e5b0a2b339feefa1e7/node_modules/vitest/dist/chunks/index.1TqnEahn.js:5390:22\r\n \u276F ChildProcess.emit node:events:518:28\r\n \u276F ChildProcess._handle.onexit node:internal/child_process:293:12\r\n\r\nCaused by: Error: Worker exited unexpectedly with exit code 134 during started state while running test file D:/python/AI_Vibe_projects/Bridge_Solver_GitHub_Pages/src/ai/analyze.test.ts\r\n \u276F ChildProcess.emitUnexpectedExit node_modules/.pnpm/vitest@5.0.5_@types\u002Bnode@26_5392d1d3bc50c5e5b0a2b339feefa1e7/node_modules/vitest/dist/chunks/index.1TqnEahn.js:5388:33\r\n \u276F ChildProcess.emit node:events:518:28\r\n \u276F ChildProcess._handle.onexit node:internal/child_process:293:12\r\n\r\n\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\u23AF\r\n\r\n\r\n Test Files  1 failed | 12 passed (14)\r\n      Tests  1 failed | 217 passed (222)\r\n     Errors  1 error\r\n   Start at  12:29:11\r\n   Duration  86.38s (tests 98%, import 1%, transform 1%, worker 1%)\r\n\r\n\u2009ELIFECYCLE\u2009 Test failed. See above for more details.\r\n",
-        "durationMs": 87975,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 test D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E vitest run src\r\n\r\n\r\n RUN  v5.0.5 D:/python/AI_Vibe_projects/Bridge_Solver_GitHub_Pages\r\n\r\n\r\n Test Files  15 passed (15)\r\n      Tests  225 passed (225)\r\n   Start at  15:10:28\r\n   Duration  33.71s (tests 93%, import 4%, transform 2%, worker 1%)\r\n\r\n",
+        "durationMs": 35311,
         "testResults": {
           "testFramework": "vitest",
           "runnerDetectedFrom": "package_json",
-          "testsTotal": 218,
-          "testsPassed": 217,
-          "testsFailed": 1,
+          "testsTotal": 225,
+          "testsPassed": 225,
+          "testsFailed": 0,
           "testsSkipped": 0,
           "parseFailed": false
         }
@@ -52,8 +52,8 @@
         "skipped": false,
         "skippedReason": null,
         "exitCode": 0,
-        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 build D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E pnpm verify:dds \u0026\u0026 pnpm verify:model-distribution \u0026\u0026 node scripts/stage-belief-runtime.mjs \u0026\u0026 rsbuild build\r\n\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:dds D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-dds.mjs\r\n\r\nVerified DDS assets at upstream revision c1dd5e03504f072d74a2c557cd15e43d7573fde6.\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:model-distribution D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-model-distribution.mjs\r\n\r\nPublic model distribution checks passed.\r\nRsbuild v2.2.14\r\n\r\ninfo    build started...\r\nready   built in 0.24s\r\n\r\nFile (web)                                       Size       Gzip   \r\ndist\\index.html                                  0.95 kB    0.49 kB\r\ndist\\static\\js\\async\\f.69c31d13b8.js             4.6 kB     2.1 kB\r\ndist\\static\\js\\async\\ma.b62bb495ff.js            7.9 kB     3.2 kB\r\ndist\\static\\js\\async\\3.639a783161.js             21.7 kB    8.3 kB\r\ndist\\static\\css\\index.dd6a6abe53.css             29.6 kB    6.9 kB\r\ndist\\static\\js\\async\\m.4672a3dc0a.js             47.8 kB    15.3 kB\r\ndist\\static\\assets\\ort.wasm.min.0d85fb22ee.mjs   48.3 kB    15.3 kB\r\ndist\\static\\js\\index.3a09f3bc76.js               110.3 kB   30.6 kB\r\ndist\\static\\js\\lib-react.78a7a00a49.js           218.2 kB   68.7 kB\r\n\r\n                                        Total:   489.3 kB   150.8 kB\r\n\r\n",
-        "durationMs": 3991
+        "outputSample": "\r\n\u003E bridge-solver-ui@0.1.0 build D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E pnpm verify:dds \u0026\u0026 pnpm verify:model-distribution \u0026\u0026 node scripts/stage-belief-runtime.mjs \u0026\u0026 rsbuild build\r\n\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:dds D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-dds.mjs\r\n\r\nVerified DDS assets at upstream revision c1dd5e03504f072d74a2c557cd15e43d7573fde6.\r\n\r\n\u003E bridge-solver-ui@0.1.0 verify:model-distribution D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E node scripts/verify-model-distribution.mjs\r\n\r\nPublic model distribution checks passed.\r\nRsbuild v2.2.14\r\n\r\ninfo    build started...\r\nready   built in 0.41s\r\n\r\nFile (web)                                       Size       Gzip   \r\ndist\\index.html                                  0.95 kB    0.49 kB\r\ndist\\static\\js\\async\\f.69c31d13b8.js             4.6 kB     2.1 kB\r\ndist\\static\\js\\async\\ma.b62bb495ff.js            7.9 kB     3.2 kB\r\ndist\\static\\js\\async\\3.639a783161.js             21.7 kB    8.3 kB\r\ndist\\static\\css\\index.dd6a6abe53.css             29.6 kB    6.9 kB\r\ndist\\static\\js\\async\\m.4672a3dc0a.js             47.8 kB    15.3 kB\r\ndist\\static\\assets\\ort.wasm.min.0d85fb22ee.mjs   48.3 kB    15.3 kB\r\ndist\\static\\js\\index.e6364ab22b.js               111.1 kB   30.8 kB\r\ndist\\static\\js\\lib-react.78a7a00a49.js           218.2 kB   68.7 kB\r\n\r\n                                        Total:   490.1 kB   151.1 kB\r\n\r\n",
+        "durationMs": 4532
       },
       {
         "name": "home-page-served",
@@ -65,7 +65,7 @@
         "skippedReason": null,
         "exitCode": null,
         "outputSample": "HTTP 200\n\u003C!doctype html\u003E\r\n\u003Chtml lang=\u0022en\u0022\u003E\r\n    \u003Chead\u003E\r\n        \u003Cmeta charset=\u0022UTF-8\u0022 /\u003E\r\n        \u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1.0\u0022 /\u003E\r\n        \u003Cmeta\r\n            name=\u0022description\u0022\r\n            content=\u0022Analyze bridge deals with library DDS or explore single-dummy advice from two visible hands.\u0022\r\n        /\u003E\r\n        \u003Cmeta name=\u0022theme-color\u0022 content=\u0022#f4f6f4\u0022 /\u003E\r\n        \u003Ctitle\u003EBridge Solver | Deal Builder\u003C/title\u003E\r\n        \u003Cscript\u003E\r\n            window.coi = {\r\n                doReload: () =\u003E navigator.serviceWorker.ready.then(() =\u003E window.location.reload()),\r\n            };\r\n        \u003C/script\u003E\r\n        \u003Cscript src=\u0022./coi-serviceworker.js\u0022\u003E\u003C/script\u003E\r\n    \u003Cscript defer src=\u0022/static/js/lib-react.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/vendors-node_modules_pnpm_rsbuild_core_2_2_14_node_modules_rsbuild_core_dist_client_overlay_js.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/src_dds_browser_ts-data_text_javascript_import_20_7B_20init_20_7D_20from_20_D_3A_2Fpython_2FA-9b4686.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/src_ai_belief_ts.js\u0022\u003E\u003C/script\u003E\u003Cscript defer src=\u0022/static/js/index.js\u0022\u003E\u003C/script\u003E\u003Clink href=\u0022/static/css/index.css\u0022 rel=\u0022stylesheet\u0022\u003E\u003C/head\u003E\r\n    \u003Cbody\u003E\r\n        \u003Cdiv id=\u0022root\u0022\u003E\u003C/div\u003E\r\n    \u003C/body\u003E\r\n\u003C/html\u003E\r\n\n--- server output ---\n\r\n\u003E bridge-solver-ui@0.1.0 dev D:\\python\\AI_Vibe_projects\\Bridge_Solver_GitHub_Pages\r\n\u003E rsbuild dev --port 3002 --strict-port\r\n\r\nRsbuild v2.2.14\r\n\r\n  \u279C  Local:    http://localhost:3002/\r\n  \u279C  Network:  use --host to expose\r\n\r\nstart   build started...\r\nready   built in 0.12s\r\n",
-        "durationMs": 1590
+        "durationMs": 1539
       },
       {
         "name": "dds-comparison-e2e",
@@ -76,8 +76,8 @@
         "skipped": false,
         "skippedReason": null,
         "exitCode": 0,
-        "outputSample": "\r\nRunning 1 test using 1 worker\r\n\r\n  ok 1 e2e\\advisor.spec.ts:159:1 \u203A automatically updates perfect-information DDS suggestions while enabled (4.1s)\r\n\r\n  1 passed (11.9s)\r\n",
-        "durationMs": 13649
+        "outputSample": "\r\nRunning 1 test using 1 worker\r\n\r\n  ok 1 e2e\\advisor.spec.ts:159:1 \u203A automatically updates perfect-information DDS suggestions while enabled (3.9s)\r\n\r\n  1 passed (12.2s)\r\n",
+        "durationMs": 14139
       }
     ],
     "executions": [
