@@ -66,9 +66,9 @@ test("learned advisor loads the bundled mixed-system model and explicitly switch
     await expect(page.locator(".advisor-analysis")).toContainText("Model: human-pilot-best2 v1.0.0.");
     await expect(page.locator(".advisor-analysis")).toContainText("Research pilot:");
     await expect(page.locator(".advisor-results tbody tr")).toHaveCount(2);
-    await page.locator("#advisor-samples").fill("501");
+    await page.locator("#advisor-samples").fill("1001");
     await page.locator("#advisor-samples").press("Enter");
-    await expect(page.locator("#advisor-samples-error")).toContainText("between 1 and 500");
+    await expect(page.locator("#advisor-samples-error")).toContainText("between 1 and 1000");
     await page.locator("#advisor-samples").fill("300");
     await page.locator("#advisor-samples").press("Enter");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("300/300");
@@ -101,9 +101,9 @@ test("browser model-guided sampler uses an optional step decoder when present", 
     await expect(page.locator(".advisor-analysis")).toContainText("Sampling: model-guided draws (equal weights)");
     await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 200.0 / 200.");
     await expect(page.locator(".advisor-analysis")).toContainText("TEST FIXTURE");
-    await page.locator("#advisor-samples").fill("500");
+    await page.locator("#advisor-samples").fill("1000");
     await page.locator("#advisor-samples").press("Enter");
-    await expect(page.locator(".advisor-analysis [role=status]")).toContainText("500/500");
+    await expect(page.locator(".advisor-analysis [role=status]")).toContainText("1000/1000", { timeout: 60_000 });
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
-    await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 500.0 / 500.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 1000.0 / 1000.");
 });

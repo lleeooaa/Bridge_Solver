@@ -203,7 +203,7 @@ export const loadOnnxBelief = async (
         scoreDeals: async (features, candidates, requestSignal) => {
             checkAbort(requestSignal);
             if (closed) throw new Error("Belief model is closed.");
-            if (candidates.length < 1 || candidates.length > 500) throw new Error("Score between 1 and 500 candidates.");
+            if (candidates.length < 1 || candidates.length > 1000) throw new Error("Score between 1 and 1000 candidates.");
             const encoded = encodeBeliefFeatures(features);
             const context = await encodeContext(encoded, requestSignal);
             const rows = candidates.map((candidate) => encodeBeliefCandidate(features, candidate));

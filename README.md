@@ -15,7 +15,7 @@ Open `http://localhost:3002/`. The learned model defaults to the bundled `models
 
 Pick a bundled example or load a complete validation deal to enable the automatic DDS comparison toggle. When on, DDS refreshes its suggestion at each declarer/dummy decision. DDS uses all four hands, including both defenders' cards; the model still sees only declarer, dummy, and public play. DDS-optimal cards are highlighted separately as a perfect-information benchmark, not as single-dummy advice.
 
-The advisor's **Samples** field accepts any whole number from 1 to 500. Press
+The advisor's **Samples** field accepts any whole number from 1 to 1000. Press
 Enter or leave the field to apply the new count and rerun the analysis.
 
 Learned-model bundles may optionally include a checksum-verified `stepDecoder.onnx`.

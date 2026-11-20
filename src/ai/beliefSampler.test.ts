@@ -38,10 +38,11 @@ describe("autoregressive model-guided deal sampling", () => {
         const card = features.unseenCards[0];
         if (card === undefined) throw new Error("Missing test card.");
         const draw = (seed: number) => sampleBeliefCandidates(
-            features, 500, new Float32Array([0]), 1, uniformStep, createRandom(seed), new AbortController().signal,
+            features, 1000, new Float32Array([0]), 1, uniformStep, createRandom(seed), new AbortController().signal,
         );
         const candidates = await draw(1701);
         expect(await draw(1701)).toEqual(candidates);
+        expect(candidates).toHaveLength(1000);
         candidates.forEach((candidate) => {
             expect(candidate.firstDefenderCards).toHaveLength(1);
             expect(candidate.firstDefenderCards[0] === card || candidate.firstDefenderCards[0] === features.unseenCards[1])

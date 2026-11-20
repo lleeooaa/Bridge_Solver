@@ -26,8 +26,8 @@ export const sampleBeliefCandidates = async (
     features: BeliefFeatures, count: number, context: Float32Array, hiddenSize: number,
     decoder: BeliefStepDecoder, random: () => number, signal: AbortSignal,
 ): Promise<BeliefCandidate[]> => {
-    if (!Number.isInteger(count) || count < 1 || count > 500) {
-        throw new Error("Sample between 1 and 500 model-guided deals.");
+    if (!Number.isInteger(count) || count < 1 || count > 1000) {
+        throw new Error("Sample between 1 and 1000 model-guided deals.");
     }
     if (!Number.isInteger(hiddenSize) || hiddenSize < 1 || context.length !== hiddenSize) {
         throw new Error("Belief encoder returned an invalid sampler context.");

@@ -154,8 +154,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const commitSamplesInput = (): void => {
         if (!samplesInputDirty) return;
         const value = Number(samplesInput);
-        if (samplesInput.trim() === "" || !Number.isInteger(value) || value < 1 || value > 500) {
-            setSamplesInputError("Sample count must be an integer between 1 and 500.");
+        if (samplesInput.trim() === "" || !Number.isInteger(value) || value < 1 || value > 1000) {
+            setSamplesInputError("Sample count must be an integer between 1 and 1000.");
             return;
         }
         setSamples(value);
@@ -949,8 +949,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                         <option value="learned">Learned mixed-system model</option>
                                     </select>
                                 </label>
-                                <label htmlFor="advisor-samples">Samples (1-500)
-                                    <input id="advisor-samples" type="number" min={1} max={500} step={1}
+                                <label htmlFor="advisor-samples">Samples (1-1000)
+                                    <input id="advisor-samples" type="number" min={1} max={1000} step={1}
                                         inputMode="numeric" required value={samplesInput}
                                         aria-invalid={samplesInputError !== null}
                                         aria-describedby={samplesInputError !== null ? "advisor-samples-error" : undefined}

@@ -23,8 +23,8 @@ export const analyzeAdvisor = async (
     belief?: BeliefModel & { readonly notice?: string },
 ): Promise<Advice> => {
     if (signal.aborted) throw analysisAborted();
-    if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 500) {
-        throw new Error("Sample count must be an integer between 1 and 500.");
+    if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 1000) {
+        throw new Error("Sample count must be an integer between 1 and 1000.");
     }
     const learned = options.belief?.type === "learned";
     if (learned && belief === undefined) throw new Error("Learned mode requested but no belief model is loaded.");
