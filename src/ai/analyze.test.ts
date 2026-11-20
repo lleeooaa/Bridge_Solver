@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cloneHand, createEmptyHands, type PlayedCard, type SolverInput } from "../bridge";
+import { RANKS, SUITS, cloneHand, createEmptyHands, type PlayedCard, type SolverInput } from "../bridge";
 import { buildPlayState, getLegalCards, isDeclarerSide } from "../play";
 import { createNodeDdsEngine } from "../dds/node";
 import { cardKey, type DdsEngine } from "../dds/engine";
@@ -7,7 +7,11 @@ import { analyzeAdvisor } from "./analyze";
 import { buildObservation, getObservedPlayableCards } from "./observation";
 import { createAdvisorContext, parseAuction } from "./context";
 import { endgameHistory, fixture } from "./fixtures.test-support";
-import { BELIEF_FEATURE_SCHEMA, BELIEF_MODEL_SCHEMA, BELIEF_OUTPUT_SCHEMA, type BeliefModel } from "./belief";
+import {
+    BELIEF_FEATURE_SCHEMA, BELIEF_MODEL_SCHEMA, BELIEF_OUTPUT_SCHEMA, buildBeliefFeatures,
+    type BeliefCandidate, type BeliefModel,
+} from "./belief";
+import { buildBeliefAllocationConstraints, encodeBeliefCandidate, getBeliefAllowedOwners } from "./beliefEncoding";
 
 const exhaustive = (input: SolverInput, history: readonly PlayedCard[]): number => {
     const state = buildPlayState(input, history);
@@ -52,6 +56,79 @@ describe("single-dummy Monte Carlo aggregation", () => {
         await expect(analyzeAdvisor(input, history,
             { samples: 6, seed: 33, belief: { type: "learned", manifestUrl: "unused" } },
             engine, new AbortController().signal)).rejects.toThrow(/no belief model/);
+    });
+    it("aggregates direct model draws with unit weights and reuses duplicate DDS evaluations", async () => {
+        const { input, deal } = fixture();
+        const history = endgameHistory(deal);
+        const contextualInput = {
+            ...input,
+            context: {
+                ...createAdvisorContext(), dealer: "North" as const, vulnerability: "none" as const,
+                auction: parseAuction("3NT P P P", "North"),
+            },
+        };
+        const features = buildBeliefFeatures(contextualInput, history);
+        const observation = buildObservation(contextualInput, history);
+        const constraints = buildBeliefAllocationConstraints(features);
+        const validWorlds: BeliefCandidate[] = [];
+        const assigned: number[] = [];
+        const enumerate = (index: number, needs: number): void => {
+            if (index === features.unseenCards.length) {
+                if (needs === 0) {
+                    const candidate = { firstDefenderCards: [...assigned] };
+                    encodeBeliefCandidate(features, candidate);
+                    validWorlds.push(candidate);
+                }
+                return;
+            }
+            const card = features.unseenCards[index];
+            if (card === undefined) throw new Error("Missing endgame card.");
+            const [canFirst, canSecond] = getBeliefAllowedOwners(constraints, index, needs);
+            if (canFirst) {
+                assigned.push(card);
+                enumerate(index + 1, needs - 1);
+                assigned.pop();
+            }
+            if (canSecond) enumerate(index + 1, needs);
+        };
+        enumerate(0, features.remainingCounts[features.hiddenSeats[0]]);
+        expect(validWorlds).toHaveLength(6);
+        const firstSeat = features.hiddenSeats[0];
+        const keyCardIndex = features.unseenCards[0];
+        if (keyCardIndex === undefined) throw new Error("Missing endgame card.");
+        const keyCard = observation.unseenCards.find((card) =>
+            SUITS.indexOf(card.suit) * 13 + RANKS.indexOf(card.rank) === keyCardIndex);
+        if (keyCard === undefined) throw new Error("Missing endgame card.");
+        const manifest = {
+            schema: BELIEF_MODEL_SCHEMA, id: "direct-test", version: "1",
+            featureSchema: BELIEF_FEATURE_SCHEMA, outputSchema: BELIEF_OUTPUT_SCHEMA,
+        } satisfies BeliefModel["manifest"];
+        let evaluations = 0;
+        const belief: BeliefModel = {
+            manifest,
+            scoreDeals: async () => { throw new Error("Direct samples must not be reweighted."); },
+            sampleDeals: async () => validWorlds.flatMap((candidate) => [candidate, candidate]),
+        };
+        const engine: DdsEngine = {
+            dispose: () => {},
+            evaluate: async (state) => {
+                evaluations += 1;
+                const tricks = state.hands[firstSeat][keyCard.suit].includes(keyCard.rank) ? 9 : 8;
+                return getLegalCards(state).map((card) => ({ card, declarerTricks: tricks }));
+            },
+        };
+        const advice = await analyzeAdvisor(contextualInput, history,
+            { samples: 12, seed: 33, belief: { type: "learned", manifestUrl: "unused" } },
+            engine, new AbortController().signal, undefined, belief);
+        const worldsWithKeyCard = validWorlds.filter((candidate) =>
+            candidate.firstDefenderCards.includes(keyCardIndex)).length;
+        expect(evaluations).toBe(validWorlds.length);
+        expect(advice.samplingMethod).toBe("learned-direct");
+        expect(advice.intervalKind).toBe("wilson");
+        expect(advice.effectiveSampleSize).toBe(12);
+        expect(advice.warning).toBeUndefined();
+        expect(advice.candidates[0]?.makeProbability).toBe(worldsWithKeyCard / validWorlds.length);
+        expect(advice.candidates[0]?.expectedTricks).toBe(8 + worldsWithKeyCard / validWorlds.length);
     });
     it("uses the same worlds for all cards and reports progress only after complete evaluations", async () => {
         const { input, deal } = fixture();

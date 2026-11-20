@@ -972,7 +972,7 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                 </p>}
                             </div>
                             {currentView?.error !== undefined && <p className="advisor-error" role="alert">{currentView.error}</p>}
-                            <p role="status">{paused ? "Analysis paused." : currentView?.error !== undefined ? "Analysis failed." : currentView?.pending ? beliefMode === "learned" ? "Loading model / analyzing weighted deals..." : "Analyzing compatible deals..." : advice?.complete ? "Analysis complete." : "Preparing analysis..."}{" "}
+                            <p role="status">{paused ? "Analysis paused." : currentView?.error !== undefined ? "Analysis failed." : currentView?.pending ? beliefMode === "learned" ? "Loading model / sampling deals..." : "Analyzing compatible deals..." : advice?.complete ? "Analysis complete." : "Preparing analysis..."}{" "}
                                 {advice !== undefined
                                     ? `${advice.samples}/${advice.requestedSamples} samples in ${(advice.elapsedMilliseconds / 1000).toFixed(2)}s.`
                                     : currentView?.pending
@@ -984,7 +984,9 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                             </p>}
                             <progress max={samples} value={advice?.samples ?? 0} aria-label="Completed Monte Carlo samples" />
                             {advice?.model === "learned-joint" && <p className="advisor-help">
-                                Model: {advice.modelId} v{advice.modelVersion}. Effective sample size: {advice.effectiveSampleSize?.toFixed(1)} / {advice.samples}.
+                                Model: {advice.modelId} v{advice.modelVersion}. Sampling: {advice.samplingMethod === "learned-direct"
+                                    ? "model-guided draws (equal weights)" : "uniform proposal with importance weights"}.
+                                {" "}Effective sample size: {advice.effectiveSampleSize?.toFixed(1)} / {advice.samples}.
                                 {" "}{advice.modelNotice}
                             </p>}
                             {advice?.warning !== undefined && <p role="alert" className="advisor-error">{advice.warning}</p>}
@@ -992,7 +994,7 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                 <div className="advisor-table-scroll">
                                     <table className="advisor-results">
                                         <caption>All legal cards on the same sampled deals; make probability first, expected tricks second.</caption>
-                                        <thead><tr><th>Card</th><th>Make estimate</th><th>Expected tricks</th><th>{beliefMode === "learned" ? "Approx. 95% weighted interval" : "95% sampling interval"}</th></tr></thead>
+                                        <thead><tr><th>Card</th><th>Make estimate</th><th>Expected tricks</th><th>{advice.intervalKind === "importance-asymptotic" ? "Approx. 95% weighted interval" : "95% sampling interval"}</th></tr></thead>
                                         <tbody>{advice.candidates.map((candidate) => (
                                             <tr key={cardKey(candidate.card)} className={[
                                                 recommended.has(cardKey(candidate.card)) ? "is-recommended" : "",
@@ -1006,7 +1008,10 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                     </table>
                                 </div>
                             )}
-                            <p className="advisor-help">Intervals measure Monte Carlo sampling uncertainty only. Learned intervals use importance-sampling variance, not Wilson intervals; [0%, 100%] is shown when ESS or variation is insufficient. They do not cover incorrect beliefs, unmodeled signals, or the advantage of seeing all cards during DDS continuation. Playing during analysis cancels the estimate for this position; another estimate starts only if declarer or dummy is next.</p>
+                            <p className="advisor-help">Intervals measure Monte Carlo sampling uncertainty only. {advice?.intervalKind === "importance-asymptotic"
+                                ? "Importance-sampling intervals use weighted variance, not Wilson intervals; [0%, 100%] is shown when ESS or variation is insufficient. "
+                                : "Uniform and model-guided equal-weight draws use Wilson intervals. "}
+                                They do not cover incorrect beliefs, unmodeled signals, or the advantage of seeing all cards during DDS continuation. Playing during analysis cancels the estimate for this position; another estimate starts only if declarer or dummy is next.</p>
                         </section>
                     )}
                     <div className="advisor-public-facts">

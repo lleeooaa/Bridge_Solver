@@ -15,7 +15,8 @@ class FakeWorker {
 
 const advice: Advice = {
     candidates: [], samples: 10, requestedSamples: 200, seed: 1,
-    elapsedMilliseconds: 10, model: "uniform-hard-constraints", complete: false,
+    elapsedMilliseconds: 10, model: "uniform-hard-constraints", samplingMethod: "uniform",
+    intervalKind: "wilson", complete: false,
 };
 const worker = (): FakeWorker => {
     const value = FakeWorker.instances.at(-1);

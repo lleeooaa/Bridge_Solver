@@ -8,6 +8,7 @@ import {
     BELIEF_AUCTION_SIZE, BELIEF_HIDDEN_SIZE, BELIEF_PLAY_SIZE, BELIEF_STATE_SIZE, BELIEF_TENSOR_SCHEMA,
     encodeBeliefCandidate, encodeBeliefFeatures,
 } from "./beliefEncoding";
+import { sampleBeliefCandidates, type BeliefStepDecoder } from "./beliefSampler";
 import { isLoopbackHostname } from "./modelPolicy";
 
 interface ModelAsset { readonly file: string; readonly sha256: string; readonly bytes: number }
@@ -18,7 +19,11 @@ export interface OnnxBeliefManifest extends BeliefModelManifest {
     readonly purpose: "research" | "research-pilot" | "test-fixture";
     readonly localOnly: boolean;
     readonly modelDistributionAllowed: boolean;
-    readonly assets: { readonly encoder: ModelAsset; readonly decoder: ModelAsset };
+    readonly assets: {
+        readonly encoder: ModelAsset;
+        readonly decoder: ModelAsset;
+        readonly stepDecoder?: ModelAsset;
+    };
 }
 export interface OnnxBeliefModel extends BeliefModel {
     readonly manifest: OnnxBeliefManifest;
@@ -65,7 +70,13 @@ export const validateOnnxManifest = (
     return {
         ...base, runtime: "onnx-bridge-belief/v1", tensorSchema: BELIEF_TENSOR_SCHEMA,
         hiddenSize: value.hiddenSize, purpose, localOnly, modelDistributionAllowed,
-        assets: { encoder: asset(value.assets.encoder, "encoder"), decoder: asset(value.assets.decoder, "decoder") },
+        assets: {
+            encoder: asset(value.assets.encoder, "encoder"),
+            decoder: asset(value.assets.decoder, "decoder"),
+            ...(value.assets.stepDecoder === undefined ? {} : {
+                stepDecoder: asset(value.assets.stepDecoder, "stepDecoder"),
+            }),
+        },
     };
 };
 
@@ -84,7 +95,7 @@ const fetchAsset = async (asset: ModelAsset, manifestUrl: string, signal: AbortS
 };
 const integers = (values: readonly number[], dims: readonly number[]): ort.Tensor =>
     new ort.Tensor("int64", BigInt64Array.from(values, BigInt), dims);
-const floats = (values: readonly number[], dims: readonly number[]): ort.Tensor =>
+const floats = (values: ArrayLike<number>, dims: readonly number[]): ort.Tensor =>
     new ort.Tensor("float32", Float32Array.from(values), dims);
 
 export const loadOnnxBelief = async (
@@ -99,8 +110,11 @@ export const loadOnnxBelief = async (
     if (!response.ok) throw new Error(`Belief model manifest download failed (${response.status}).`);
     const value: unknown = await response.json();
     const manifest = validateOnnxManifest(value, { allowLocalOnly: isLoopbackHostname(manifestOrigin.hostname) });
-    const [encoderBytes, decoderBytes] = await Promise.all([
-        fetchAsset(manifest.assets.encoder, manifestUrl, signal), fetchAsset(manifest.assets.decoder, manifestUrl, signal),
+    const [encoderBytes, decoderBytes, stepDecoderBytes] = await Promise.all([
+        fetchAsset(manifest.assets.encoder, manifestUrl, signal),
+        fetchAsset(manifest.assets.decoder, manifestUrl, signal),
+        manifest.assets.stepDecoder === undefined ? Promise.resolve(undefined) :
+            fetchAsset(manifest.assets.stepDecoder, manifestUrl, signal),
     ]);
     checkAbort(signal);
     ort.env.wasm.numThreads = 1;
@@ -108,17 +122,71 @@ export const loadOnnxBelief = async (
     ort.env.wasm.wasmPaths = runtimeUrl;
     const encoder = await ort.InferenceSession.create(encoderBytes, { executionProviders: ["wasm"] });
     let decoder: ort.InferenceSession | undefined;
+    let stepAllocation: ort.InferenceSession | undefined;
     try {
         checkAbort(signal);
         decoder = await ort.InferenceSession.create(decoderBytes, { executionProviders: ["wasm"] });
+        if (stepDecoderBytes !== undefined) {
+            checkAbort(signal);
+            stepAllocation = await ort.InferenceSession.create(stepDecoderBytes, { executionProviders: ["wasm"] });
+        }
         checkAbort(signal);
     } catch (error: unknown) {
         await encoder.release();
         await decoder?.release();
+        await stepAllocation?.release();
         throw error;
     }
     const allocation = decoder;
+    if (allocation === undefined) throw new Error("Belief decoder session failed to initialize.");
+    const stepSession = stepAllocation;
     let closed = false;
+    const encodeContext = async (
+        encoded: ReturnType<typeof encodeBeliefFeatures>, requestSignal: AbortSignal,
+    ): Promise<Float32Array> => {
+        checkAbort(requestSignal);
+        if (closed) throw new Error("Belief model is closed.");
+        const outputs = await encoder.run({
+            state: floats(encoded.state, [1, BELIEF_STATE_SIZE]),
+            auction: integers(encoded.auction, [1, BELIEF_AUCTION_SIZE]),
+            play: integers(encoded.play, [1, BELIEF_PLAY_SIZE]),
+        });
+        checkAbort(requestSignal);
+        const context = outputs.context;
+        if (context === undefined || context.type !== "float32" || context.size !== manifest.hiddenSize) {
+            throw new Error("Belief encoder returned an invalid context tensor.");
+        }
+        return Float32Array.from(context.data, Number);
+    };
+    const stepDecoder: BeliefStepDecoder | undefined = stepSession === undefined ? undefined : {
+        run: async (input, requestSignal) => {
+            checkAbort(requestSignal);
+            if (closed) throw new Error("Belief model is closed.");
+            const count = input.cards.length;
+            if (count < 1 || input.previous.length !== count || input.hidden.length !== count * manifest.hiddenSize ||
+                input.allowed.length !== count * 2) {
+                throw new Error("Invalid belief step-decoder input dimensions.");
+            }
+            const outputs = await stepSession.run({
+                hidden: floats(input.hidden, [count, manifest.hiddenSize]),
+                card: integers(input.cards, [count, 1]),
+                previous: integers(input.previous, [count, 1]),
+                allowed: new ort.Tensor("bool", input.allowed, [count, 2]),
+            });
+            checkAbort(requestSignal);
+            const logits = outputs.logits;
+            const nextHidden = outputs.next_hidden;
+            const logitsData = logits?.data;
+            const nextHiddenData = nextHidden?.data;
+            if (logits === undefined || logits.type !== "float32" || logits.size !== count * 2 ||
+                !(logitsData instanceof Float32Array) || nextHidden === undefined ||
+                nextHidden.type !== "float32" || nextHidden.size !== count * manifest.hiddenSize ||
+                !(nextHiddenData instanceof Float32Array)) {
+                throw new Error("Belief step decoder returned invalid tensor dimensions.");
+            }
+            return { logits: logitsData, nextHidden: nextHiddenData };
+        },
+    };
     return {
         manifest,
         notice: manifest.localOnly ? "Local-only model: only for localhost testing; do not deploy." :
@@ -130,27 +198,22 @@ export const loadOnnxBelief = async (
             closed = true;
             await encoder.release();
             await allocation.release();
+            await stepSession?.release();
         },
         scoreDeals: async (features, candidates, requestSignal) => {
             checkAbort(requestSignal);
             if (closed) throw new Error("Belief model is closed.");
             if (candidates.length < 1 || candidates.length > 500) throw new Error("Score between 1 and 500 candidates.");
             const encoded = encodeBeliefFeatures(features);
-            const outputs = await encoder.run({
-                state: floats(encoded.state, [1, BELIEF_STATE_SIZE]),
-                auction: integers(encoded.auction, [1, BELIEF_AUCTION_SIZE]),
-                play: integers(encoded.play, [1, BELIEF_PLAY_SIZE]),
-            });
-            checkAbort(requestSignal);
-            const context = outputs.context;
-            if (context === undefined || context.type !== "float32" || context.size !== manifest.hiddenSize) {
-                throw new Error("Belief encoder returned an invalid context tensor.");
-            }
+            const context = await encodeContext(encoded, requestSignal);
             const rows = candidates.map((candidate) => encodeBeliefCandidate(features, candidate));
             const count = rows.length;
+            const repeatedContext = new Float32Array(count * manifest.hiddenSize);
+            for (let index = 0; index < count; index += 1) {
+                repeatedContext.set(context, index * manifest.hiddenSize);
+            }
             const decoded = await allocation.run({
-                context: floats(Array.from({ length: count }, () => Array.from(context.data, Number)).flat(),
-                    [count, manifest.hiddenSize]),
+                context: floats(repeatedContext, [count, manifest.hiddenSize]),
                 cards: integers(Array.from({ length: count }, () => encoded.cards).flat(), [count, BELIEF_HIDDEN_SIZE]),
                 previous: integers(rows.flatMap((row) => row.previous), [count, BELIEF_HIDDEN_SIZE]),
                 allowed: new ort.Tensor("bool", Uint8Array.from(rows.flatMap((row) => row.allowed)),
@@ -175,5 +238,15 @@ export const loadOnnxBelief = async (
             }
             return result;
         },
+        ...(stepDecoder === undefined ? {} : {
+            sampleDeals: async (features, count, random, requestSignal) => {
+                checkAbort(requestSignal);
+                if (closed) throw new Error("Belief model is closed.");
+                const encoded = encodeBeliefFeatures(features);
+                const context = await encodeContext(encoded, requestSignal);
+                return sampleBeliefCandidates(features, count, context, manifest.hiddenSize,
+                    stepDecoder, random, requestSignal);
+            },
+        }),
     };
 };

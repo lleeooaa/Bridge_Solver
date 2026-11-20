@@ -51,31 +51,81 @@ export const encodeBeliefFeatures = (features: BeliefFeatures): {
     };
 };
 
+export interface BeliefAllocationConstraints {
+    readonly possibleOwners: readonly (readonly [boolean, boolean])[];
+    readonly minimumFirstInSuffix: readonly number[];
+    readonly maximumFirstInSuffix: readonly number[];
+}
+
+export const buildBeliefAllocationConstraints = (features: BeliefFeatures): BeliefAllocationConstraints => {
+    const [first, second] = features.hiddenSeats;
+    const count = features.unseenCards.length;
+    const firstNeeds = features.remainingCounts[first];
+    const secondNeeds = features.remainingCounts[second];
+    if (count > BELIEF_HIDDEN_SIZE || !Number.isInteger(firstNeeds) || !Number.isInteger(secondNeeds) ||
+        firstNeeds < 0 || secondNeeds < 0 || firstNeeds + secondNeeds !== count) {
+        throw new Error("Belief hidden-card counts do not match the unseen-card sequence.");
+    }
+    if (new Set(features.unseenCards).size !== count ||
+        features.unseenCards.some((card) => !Number.isInteger(card) || card < 0 || card >= 52)) {
+        throw new Error("Belief unseen cards must be distinct valid card identities.");
+    }
+    const possibleOwners = features.unseenCards.map((card): readonly [boolean, boolean] => {
+        const suit = SUITS[Math.floor(card / 13)];
+        if (suit === undefined) throw new Error("Invalid unseen card identity.");
+        const pair = [!features.voids[first].includes(suit), !features.voids[second].includes(suit)] as const;
+        if (!pair[0] && !pair[1]) throw new Error("Public void constraints make this unseen deal impossible.");
+        return pair;
+    });
+    const minimumFirstInSuffix = Array<number>(count).fill(0);
+    const maximumFirstInSuffix = Array<number>(count).fill(0);
+    let minimum = 0;
+    let maximum = 0;
+    for (let index = count - 1; index >= 0; index -= 1) {
+        const pair = possibleOwners[index];
+        if (pair === undefined) throw new Error("Missing hidden-card ownership constraints.");
+        minimumFirstInSuffix[index] = minimum;
+        maximumFirstInSuffix[index] = maximum;
+        minimum += Number(!pair[1]);
+        maximum += Number(pair[0]);
+    }
+    if (firstNeeds < minimum || firstNeeds > maximum) {
+        throw new Error("Public void/count constraints leave no compatible hidden deal.");
+    }
+    return { possibleOwners, minimumFirstInSuffix, maximumFirstInSuffix };
+};
+
+export const getBeliefAllowedOwners = (
+    constraints: BeliefAllocationConstraints, index: number, firstNeeds: number,
+): readonly [boolean, boolean] => {
+    const pair = constraints.possibleOwners[index];
+    const minimum = constraints.minimumFirstInSuffix[index];
+    const maximum = constraints.maximumFirstInSuffix[index];
+    if (pair === undefined || minimum === undefined || maximum === undefined ||
+        !Number.isInteger(firstNeeds) || firstNeeds < 0) {
+        throw new Error("Invalid hidden-card allocation state.");
+    }
+    const first = pair[0] && minimum <= firstNeeds - 1 && firstNeeds - 1 <= maximum;
+    const second = pair[1] && minimum <= firstNeeds && firstNeeds <= maximum;
+    if (!first && !second) throw new Error("Public void/count constraints leave no legal next owner.");
+    return [first, second];
+};
+
 export const encodeBeliefCandidate = (features: BeliefFeatures, candidate: BeliefCandidate): {
     targets: number[]; previous: number[]; allowed: number[]; active: number[];
 } => {
-    const [first, second] = features.hiddenSeats;
+    const first = features.hiddenSeats[0];
     const assigned = new Set(candidate.firstDefenderCards);
     let needs = features.remainingCounts[first];
     if (assigned.size !== candidate.firstDefenderCards.length || assigned.size !== needs ||
         [...assigned].some((card) => !features.unseenCards.includes(card))) {
         throw new Error("Belief candidate must allocate the correct number of distinct unseen cards.");
     }
-    const possible = features.unseenCards.map((card): readonly [boolean, boolean] => {
-        const suit = SUITS[Math.floor(card / 13)];
-        if (suit === undefined) throw new Error("Invalid unseen card identity.");
-        return [!features.voids[first].includes(suit), !features.voids[second].includes(suit)];
-    });
+    const constraints = buildBeliefAllocationConstraints(features);
     const targets: number[] = [];
     const allowed: number[] = [];
     features.unseenCards.forEach((card, index) => {
-        const pair = possible[index];
-        if (pair === undefined) throw new Error("Missing candidate constraint.");
-        const future = possible.slice(index + 1);
-        const minimum = future.filter((value) => !value[1]).length;
-        const maximum = future.filter((value) => value[0]).length;
-        const left = pair[0] && minimum <= needs - 1 && needs - 1 <= maximum;
-        const right = pair[1] && minimum <= needs && needs <= maximum;
+        const [left, right] = getBeliefAllowedOwners(constraints, index, needs);
         const target = assigned.has(card) ? 0 : 1;
         if (!(target === 0 ? left : right)) throw new Error("Belief candidate violates public void/count constraints.");
         targets.push(target);

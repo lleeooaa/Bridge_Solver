@@ -45,11 +45,12 @@ export interface Advice {
     readonly seed: number;
     readonly elapsedMilliseconds: number;
     readonly model: "uniform-hard-constraints" | "learned-joint";
+    readonly samplingMethod: "uniform" | "learned-importance" | "learned-direct";
     readonly modelId?: string;
     readonly modelVersion?: string;
     readonly modelNotice?: string;
     readonly effectiveSampleSize?: number;
-    readonly intervalKind?: "wilson" | "importance-asymptotic";
+    readonly intervalKind: "wilson" | "importance-asymptotic";
     readonly warning?: string;
     readonly complete: boolean;
 }

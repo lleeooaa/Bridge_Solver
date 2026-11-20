@@ -1,6 +1,6 @@
 {
   "schema": "bridge-belief-model/v1",
-  "id": "human-pilot-colab",
+  "id": "human-pilot-best1",
   "version": "1.0.0",
   "featureSchema": "bridge-declarer-features/v1",
   "outputSchema": "bridge-hidden-deal-log-weights/v1",
@@ -15,19 +15,25 @@
   "assets": {
     "encoder": {
       "file": "encoder.onnx",
-      "sha256": "bfa15d06ab7cd835da7f8265862907a46180775fb4f36fb7a39537f245a4f7fa",
+      "sha256": "f7d9e2dc31794b411cd4a341132b9a5afe0b32bdddd595428f2046f92d5fbc28",
       "bytes": 2510692
     },
     "decoder": {
       "file": "decoder.onnx",
-      "sha256": "31c8d087598aadddb629b352508381fa811a0a579334d436721ec89a5f77f974",
+      "sha256": "c39b4d6603786664feb1c2deaba7484723080feb9b97f4ff977a78fc394e0f59",
       "bytes": 900771
+    },
+    "stepDecoder": {
+      "file": "stepDecoder.onnx",
+      "sha256": "06257a24440f551af0fcbf567ffc787efef29154e07ab48e71c88d5267a3021e",
+      "bytes": 900278
     }
   },
   "exportParity": {
     "absoluteTolerance": 0.0001,
     "relativeTolerance": 0.0001,
-    "maximumAbsoluteError": 1.9073486328125e-06
+    "maximumAbsoluteError": 5.7220458984375e-06,
+    "maximumStepAbsoluteError": 2.1457672119140625e-06
   },
   "limitations": [
     "Free-text convention notes are stored but not encoded by this model.",

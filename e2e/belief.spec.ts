@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { fillKnownExampleHands, openApp } from "./fixtures";
+import { fillKnownExampleHands, openApp, startAdvisor } from "./fixtures";
 
 test("real browser ONNX runtime matches exported PyTorch log scores at multiple batch sizes", async ({ page }) => {
     await openApp(page);
@@ -60,8 +60,10 @@ test("learned advisor loads the bundled mixed-system model and explicitly switch
     await page.locator("#advisor-belief-model").selectOption("learned");
     await expect(page.locator("#advisor-model-url")).toHaveCount(0);
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
+    await expect(page.locator(".advisor-analysis")).toContainText("model-guided draws (equal weights)");
     await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size:");
-    await expect(page.locator(".advisor-analysis")).toContainText("Model: human-pilot-colab v1.0.0.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 200.0 / 200.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Model: human-pilot-best1 v1.0.0.");
     await expect(page.locator(".advisor-analysis")).toContainText("Research pilot:");
     await expect(page.locator(".advisor-results tbody tr")).toHaveCount(2);
     await page.locator("#advisor-samples").selectOption("500");
@@ -71,4 +73,31 @@ test("learned advisor loads the bundled mixed-system model and explicitly switch
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
     await expect(page.locator(".advisor-analysis")).toContainText("uniform hard constraints");
     expect(errors).toEqual([]);
+});
+
+test("browser model-guided sampler uses an optional step decoder when present", async ({ page }) => {
+    await page.context().route("**/models/belief/manifest.json", (route) =>
+        route.fulfill({ path: "e2e/fixtures/belief/manifest.json", contentType: "application/json" }));
+    await page.context().route("**/models/belief/*.onnx", async (route) => {
+        const name = new URL(route.request().url()).pathname.split("/").pop();
+        if (name !== "encoder.onnx" && name !== "decoder.onnx" && name !== "stepDecoder.onnx") {
+            await route.abort();
+            return;
+        }
+        await route.fulfill({
+            path: `e2e/fixtures/belief/${name}`,
+            contentType: "application/octet-stream",
+        });
+    });
+    await openApp(page);
+    await startAdvisor(page);
+    await page.locator("#advisor-belief-model").selectOption("learned");
+    await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Sampling: model-guided draws (equal weights)");
+    await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 200.0 / 200.");
+    await expect(page.locator(".advisor-analysis")).toContainText("TEST FIXTURE");
+    await page.locator("#advisor-samples").selectOption("500");
+    await expect(page.locator(".advisor-analysis [role=status]")).toContainText("500/500");
+    await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
+    await expect(page.locator(".advisor-analysis")).toContainText("Effective sample size: 500.0 / 500.");
 });

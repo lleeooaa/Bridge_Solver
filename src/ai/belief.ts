@@ -58,6 +58,9 @@ export interface BeliefModel {
     scoreDeals: (
         features: BeliefFeatures, candidates: readonly BeliefCandidate[], signal: AbortSignal,
     ) => Promise<BeliefScores>;
+    sampleDeals?: (
+        features: BeliefFeatures, count: number, random: () => number, signal: AbortSignal,
+    ) => Promise<readonly BeliefCandidate[]>;
 }
 
 const cardIndex = (card: Card): number => SUITS.indexOf(card.suit) * 13 + RANKS.indexOf(card.rank);

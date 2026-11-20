@@ -8,25 +8,32 @@
   "tensorSchema": "bridge-belief-tensors/v1",
   "hiddenSize": 8,
   "purpose": "test-fixture",
+  "localOnly": false,
   "modelDistributionAllowed": false,
   "humanUniqueDeals": 0,
-  "datasetSha256": "b7f3a9e1a53790c8640e9e574490d69a3bf7b48fca44cf98623fb1bbecc94ea9",
+  "datasetSha256": "7aeeffed14815ac5fc325d82f18514f8d883a7ef3fe19d9f0b7d73466514cfb0",
   "assets": {
     "encoder": {
       "file": "encoder.onnx",
-      "sha256": "9d2f122b9439d2cf242266353a6102c01cb06edb8f41a447d3d076d9e4e54c8c",
+      "sha256": "6b413c3a5c98bb44fe82aa66cfd6750b1170c285d0d012414908e267184e26a2",
       "bytes": 60426
     },
     "decoder": {
       "file": "decoder.onnx",
-      "sha256": "cedce2a7851997632dea924f8d4a89824459281e9105b85ea91865c36b80a551",
+      "sha256": "423f669af1a34e8107a0af126d192fbe17af29aebfb8d3d655ba58724dd3695d",
       "bytes": 11925
+    },
+    "stepDecoder": {
+      "file": "stepDecoder.onnx",
+      "sha256": "d6116557c8a19fd1d02b1267aaf5812ef0bea174e7879a2f3d7c471b0116b50f",
+      "bytes": 11431
     }
   },
   "exportParity": {
     "absoluteTolerance": 0.0001,
     "relativeTolerance": 0.0001,
-    "maximumAbsoluteError": 9.5367431640625e-07
+    "maximumAbsoluteError": 9.5367431640625e-07,
+    "maximumStepAbsoluteError": 2.384185791015625e-07
   },
   "limitations": [
     "Free-text convention notes are stored but not encoded by this model.",

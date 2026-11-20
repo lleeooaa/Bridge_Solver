@@ -55,6 +55,10 @@ describe("Python/browser belief tensor contract", () => {
         const valid = validateOnnxManifest(manifest);
         expect(valid.purpose).toBe("test-fixture");
         expect(valid.localOnly).toBe(false);
+        const directSampling = validateOnnxManifest({ ...valid, assets: {
+            ...valid.assets, stepDecoder: { ...valid.assets.decoder, file: "stepDecoder.onnx" },
+        } });
+        expect(directSampling.assets.stepDecoder?.file).toBe("stepDecoder.onnx");
         expect(() => validateOnnxManifest({ ...valid, tensorSchema: "other" })).toThrow(/tensor/);
         expect(() => validateOnnxManifest({ ...valid, purpose: "research", modelDistributionAllowed: false }))
             .toThrow(/distribution/);
@@ -68,5 +72,8 @@ describe("Python/browser belief tensor contract", () => {
         expect(() => validateOnnxManifest({ ...valid, assets: {
             ...valid.assets, encoder: { ...valid.assets.encoder, file: "../private.onnx" },
         } })).toThrow(/asset/);
+        expect(() => validateOnnxManifest({ ...valid, assets: {
+            ...valid.assets, stepDecoder: { ...valid.assets.decoder, file: "../stepDecoder.onnx" },
+        } })).toThrow(/stepDecoder.*asset|asset/);
     });
 });
