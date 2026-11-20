@@ -1,6 +1,6 @@
 {
   "schema": "bridge-belief-model/v1",
-  "id": "human-pilot-best1",
+  "id": "human-pilot-best2",
   "version": "1.0.0",
   "featureSchema": "bridge-declarer-features/v1",
   "outputSchema": "bridge-hidden-deal-log-weights/v1",
@@ -15,25 +15,25 @@
   "assets": {
     "encoder": {
       "file": "encoder.onnx",
-      "sha256": "f7d9e2dc31794b411cd4a341132b9a5afe0b32bdddd595428f2046f92d5fbc28",
+      "sha256": "b990f19bb703b7f5b99557d7e8d1d9be5b1b9e01aa2a727f10d01e69682ee241",
       "bytes": 2510692
     },
     "decoder": {
       "file": "decoder.onnx",
-      "sha256": "c39b4d6603786664feb1c2deaba7484723080feb9b97f4ff977a78fc394e0f59",
+      "sha256": "a15074954a7c07b15f118b9a3aa19757ebc69505aa207664415e5ecb4ccf8231",
       "bytes": 900771
     },
     "stepDecoder": {
       "file": "stepDecoder.onnx",
-      "sha256": "06257a24440f551af0fcbf567ffc787efef29154e07ab48e71c88d5267a3021e",
+      "sha256": "fb786997f704f40886d22289cb89720e703bb57f128ead5241766686f3096611",
       "bytes": 900278
     }
   },
   "exportParity": {
     "absoluteTolerance": 0.0001,
     "relativeTolerance": 0.0001,
-    "maximumAbsoluteError": 5.7220458984375e-06,
-    "maximumStepAbsoluteError": 2.1457672119140625e-06
+    "maximumAbsoluteError": 3.814697265625e-06,
+    "maximumStepAbsoluteError": 1.430511474609375e-06
   },
   "limitations": [
     "Free-text convention notes are stored but not encoded by this model.",

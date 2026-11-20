@@ -119,7 +119,8 @@ test("separate advisor uses only two visible hands and restores reproducible adv
     await page.getByRole("button", { name: "Undo one card", exact: true }).click();
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
     await expect(page.locator(".advisor-results tbody")).toHaveText(original, { useInnerText: true });
-    await page.locator("#advisor-samples").selectOption("500");
+    await page.locator("#advisor-samples").fill("500");
+    await page.locator("#advisor-samples").press("Enter");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("500/500");
     await expect(page.locator(".advisor-analysis [role=status]")).toContainText("Analysis complete.");
     await page.getByRole("tab", { name: "Solver / Challenge", exact: true }).click();

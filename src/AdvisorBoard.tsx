@@ -121,6 +121,9 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const [input, setInput] = useState<AdvisorInput | null>(null);
     const [history, setHistory] = useState<readonly PlayedCard[]>([]);
     const [samples, setSamples] = useState(200);
+    const [samplesInput, setSamplesInput] = useState("200");
+    const [samplesInputDirty, setSamplesInputDirty] = useState(false);
+    const [samplesInputError, setSamplesInputError] = useState<string | null>(null);
     const [seed, setSeed] = useState("1");
     const [beliefMode, setBeliefMode] = useState<"uniform" | "learned">("uniform");
     const modelUrl = defaultBeliefManifestUrl(window.location.hostname);
@@ -148,6 +151,19 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     const validationHybridDecisionCheckpoints = useRef<ValidationHybridCheckpoints>([]);
     const ddsAdvisorRequest = useRef<DdsAdvisorRequest | null>(null);
     const ddsAdvisorSession = useRef<DdsAdvisorSession | null>(null);
+    const commitSamplesInput = (): void => {
+        if (!samplesInputDirty) return;
+        const value = Number(samplesInput);
+        if (samplesInput.trim() === "" || !Number.isInteger(value) || value < 1 || value > 500) {
+            setSamplesInputError("Sample count must be an integer between 1 and 500.");
+            return;
+        }
+        setSamples(value);
+        setSamplesInput(String(value));
+        setSamplesInputDirty(false);
+        setSamplesInputError(null);
+        setPaused(false);
+    };
     const cancelValidationDdsTurn = (): void => {
         const controller = validationDdsController.current;
         validationDdsController.current = null;
@@ -276,7 +292,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
     }, [active, input, retry]);
 
     useEffect(() => {
-        if (!active || input === null || observation === null || observation.isComplete || !controlled || paused) return;
+        if (!active || input === null || observation === null || observation.isComplete || !controlled ||
+            paused || samplesInputDirty) return;
         const connection = client.current;
         if (connection === null) return;
         const controller = new AbortController();
@@ -313,7 +330,8 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
             if (!controller.signal.aborted) setView({ ...base, pending: false, error: messageFor(failure) });
         });
         return () => controller.abort();
-    }, [active, input, observation, controlled, history, samples, seed, paused, retry, beliefMode, modelUrl, beliefKey]);
+    }, [active, input, observation, controlled, history, samples, samplesInputDirty,
+        seed, paused, retry, beliefMode, modelUrl, beliefKey]);
 
     useEffect(() => () => {
         const controller = validationDdsController.current;
@@ -931,11 +949,28 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                         <option value="learned">Learned mixed-system model</option>
                                     </select>
                                 </label>
-                                <label htmlFor="advisor-samples">Samples
-                                    <select id="advisor-samples" value={samples} onChange={(event) => { setSamples(Number(event.target.value)); setPaused(false); }}>
-                                        <option value={200}>200</option><option value={500}>500</option>
-                                    </select>
+                                <label htmlFor="advisor-samples">Samples (1-500)
+                                    <input id="advisor-samples" type="number" min={1} max={500} step={1}
+                                        inputMode="numeric" required value={samplesInput}
+                                        aria-invalid={samplesInputError !== null}
+                                        aria-describedby={samplesInputError !== null ? "advisor-samples-error" : undefined}
+                                        onChange={(event) => {
+                                            setSamplesInput(event.target.value);
+                                            setSamplesInputDirty(true);
+                                            setSamplesInputError(null);
+                                            setView(null);
+                                            setPaused(true);
+                                        }}
+                                        onBlur={commitSamplesInput}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter") {
+                                                event.preventDefault();
+                                                event.currentTarget.blur();
+                                            }
+                                        }} />
                                 </label>
+                                {samplesInputError !== null &&
+                                    <p id="advisor-samples-error" role="alert" className="advisor-error">{samplesInputError}</p>}
                                 <label htmlFor="advisor-seed">Random seed
                                     <input id="advisor-seed" inputMode="numeric" value={seed} onChange={(event) => { setSeed(event.target.value); setPaused(false); }} />
                                 </label>
@@ -976,7 +1011,7 @@ const AdvisorBoard = ({ active }: { active: boolean }) => {
                                 {advice !== undefined
                                     ? `${advice.samples}/${advice.requestedSamples} samples in ${(advice.elapsedMilliseconds / 1000).toFixed(2)}s.`
                                     : currentView?.pending
-                                        ? `0/${samples} DDS samples complete; ${beliefMode === "learned" ? "model loading and deal weighting" : "deal preparation"} happens first.`
+                                        ? `0/${samples} DDS samples complete; ${beliefMode === "learned" ? "model loading and deal preparation" : "deal preparation"} happens first.`
                                         : ""}
                             </p>
                             {currentView?.pending && <p className="advisor-help">
